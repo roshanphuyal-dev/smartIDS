@@ -1,0 +1,10 @@
+cd smartIDS
+source .venv/bin/activate
+
+
+// after installing new dependencies or making changes to existing ones:
+
+pip freeze > requirements.txt
+
+//to run the main.py inside packet_capture
+sudo .venv/bin/python -m packet_capture.main

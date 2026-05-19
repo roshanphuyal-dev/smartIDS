@@ -1,0 +1,73 @@
+# Virtual Environment 
+.venv/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled Extensions
+*.so
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs
+logs/
+*.log
+
+# Environment Variables
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Dabase
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+
+# Node Modules
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Redis Dump
+dump.rdb
+
+# Docker
+*.pid
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Pyright
+.pyright/
+
+# linux hidden files
+._*
+
