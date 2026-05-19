@@ -1,3 +1,4 @@
-from packet_capture.sniffers.live_sniffer import start_sniffing
+from packet_capture.sniffer_service import SnifferService
 
-start_sniffing()
+service = SnifferService()
+service.start()
