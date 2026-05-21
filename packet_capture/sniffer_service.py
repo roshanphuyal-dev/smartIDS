@@ -4,14 +4,14 @@ from queue import Queue
 from packet_capture.sniffers.live_sniffer import LiveSniffer
 from packet_capture.sniffers.interface_manager import InterfaceManager
 from packet_capture.utils.packet_filters import PacketFilters
-from packet_capture.processors.packet_processor import PacketProcessor
+from packet_capture.processor.packet_processor import PacketProcessor  # type: ignore
 
 
 class SnifferService:
 
     def __init__(self, interface=None, packet_filter=None, processor=None):
         self.interface = interface or InterfaceManager.get_default_interface()
-        self.packet_queue = Queue()
+        self.packet_queue = Queue(maxsize=10000)
         self.packet_filter = packet_filter or PacketFilters.basic_filter()
         self.processor = processor or PacketProcessor()
         self.sniffer = LiveSniffer(

@@ -2,6 +2,7 @@ from queue import Queue
 from scapy.all import sniff  # type: ignore
 
 from packet_capture.parsers.packet_parser import PacketParser  # type: ignore
+from queue import Full
 
 
 class LiveSniffer:
@@ -23,4 +24,10 @@ class LiveSniffer:
         parsed_packet = self.parser.parse(packet)
 
         if parsed_packet is not None:
-            self.packet_queue.put(parsed_packet)
+            try:
+                self.packet_queue.put_nowait(parsed_packet)
+            except Full:
+                pass
+
+
+# Later need to work on packet prioritization, adaptive sampling, dynamic queue sizing, flow-aware dropping, multiprocessing consumers

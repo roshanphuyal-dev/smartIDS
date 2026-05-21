@@ -14,6 +14,7 @@ The system uses passive packet sniffing with Scapy.
 Packets are observed as copies after entering the OS networking stack.
 
 Therefore:
+
 - malicious packets may already reach applications before detection
 - response engine blocks FUTURE traffic only
 - system performs reactive mitigation, not perfect prevention
@@ -26,21 +27,21 @@ CORE ARCHITECTURE
 ==================================================
 
 Packet Capture
-    ↓
+↓
 Packet Parsing
-    ↓
+↓
 Traffic Session Building
-    ↓
+↓
 Feature Extraction
-    ↓
+↓
 ML Detection Engine
-    ↓
+↓
 Threat Decision Engine
-    ↓
+↓
 Response Engine
-    ↓
+↓
 FastAPI + WebSocket Streaming
-    ↓
+↓
 Realtime Dashboard
 
 ==================================================
@@ -51,6 +52,7 @@ FINAL DECISION:
 Hybrid Thread + Queue + AsyncIO Architecture
 
 Structure:
+
 - Dedicated thread for Scapy packet sniffing
 - Queue-based buffering between capture and processing
 - AsyncIO consumers for downstream processing
@@ -59,12 +61,14 @@ Reasoning:
 Scapy is blocking internally and not truly async-native.
 
 Capture thread responsibilities:
+
 - sniff packet
 - minimally parse
 - enqueue packet
 - return immediately
 
 Processing responsibilities:
+
 - packet parsing
 - session aggregation
 - feature extraction
@@ -80,6 +84,7 @@ CRITICAL ENGINEERING RULES
 ==================================================
 
 NEVER:
+
 - generate massive monolithic files
 - tightly couple modules
 - place ML logic inside API routes
@@ -90,6 +95,7 @@ NEVER:
 - use sklearn classifiers for final ML logic
 
 ALWAYS:
+
 - separate capture, parsing, session building, ML, threat scoring, and response handling into isolated modules
 - use queue-based producer-consumer pipelines
 - keep APIs thin and business logic modular
@@ -102,6 +108,7 @@ PROJECT GOALS
 ==================================================
 
 Primary goals:
+
 - realtime packet monitoring
 - session-aware traffic analysis
 - custom feature extraction
@@ -111,6 +118,7 @@ Primary goals:
 - scalable backend architecture
 
 Secondary goals:
+
 - portfolio-quality architecture
 - backend engineering showcase
 - cybersecurity showcase
@@ -127,12 +135,14 @@ ML must be manually implemented for academic explainability.
 
 Model 1:
 Statistical Anomaly Detection
+
 - manual Z-score implementation
 - moving averages
 - standard deviation
 - anomaly thresholds
 
 Detects:
+
 - traffic spikes
 - flooding
 - abnormal packet rates
@@ -142,6 +152,7 @@ Model 2:
 Manual Decision Tree Classifier
 
 Implement manually:
+
 - entropy
 - information gain
 - recursive splitting
@@ -149,6 +160,7 @@ Implement manually:
 - tree traversal
 
 Detects:
+
 - SYN flood
 - brute force behavior
 - suspicious traffic patterns
@@ -166,14 +178,15 @@ Use firewall abstraction layer.
 Correct structure:
 
 response_engine
-    ↓
+↓
 firewall abstraction layer
-    ↓
+↓
 linux adapter
 windows adapter
 mac adapter
 
 Generic methods:
+
 - block_ip()
 - unblock_ip()
 - rate_limit_ip()
@@ -186,6 +199,7 @@ PERFORMANCE RULES
 ==================================================
 
 Primary focus:
+
 - sustained throughput
 - queue buffering
 - packet loss minimization
@@ -201,6 +215,7 @@ Preferred flow:
 Packet → Queue → Aggregation → ML → DB
 
 Rules:
+
 - minimize blocking operations
 - batch expensive operations
 - aggregate before persistence
@@ -223,6 +238,7 @@ FASTAPI BACKEND STRUCTURE
 ==================================================
 
 Recommended structure:
+
 - routers/
 - services/
 - schemas/
@@ -238,6 +254,7 @@ CURRENT PROJECT STRUCTURE
 ==================================================
 
 packet_capture/
+
 - sniffers/
 - parsers/
 - packet_models/
@@ -245,38 +262,45 @@ packet_capture/
 - tests/
 
 traffic_engine/
+
 - session building
 - aggregation
 - flow tracking
 
 feature_engine/
+
 - feature extraction
 - transformations
 - feature storage
 
 ml/
+
 - anomaly detection
 - decision tree
 - training
 - inference
 
 threat_engine/
+
 - threat scoring
 - classification
 - alert management
 
 response_engine/
+
 - firewall abstraction
 - blacklist management
 - rate limiting
 
 backend/
+
 - FastAPI
 - WebSockets
 - APIs
 - auth
 
 client/
+
 - React dashboard
 - realtime visualization
 
@@ -302,6 +326,7 @@ DEVELOPER LEARNING CONTEXT
 ==================================================
 
 Developer is a beginner and prefers:
+
 - step-by-step guidance
 - concept explanations
 - architectural reasoning
@@ -309,12 +334,14 @@ Developer is a beginner and prefers:
 - learning-focused mentoring
 
 Avoid:
+
 - giant code dumps
 - overcomplicated abstractions
 - unnecessary advanced networking internals
 - excessive optimization too early
 
 Current learning priorities:
+
 1. Classes & OOP
 2. Queues
 3. Threading
@@ -323,6 +350,7 @@ Current learning priorities:
 6. Exception handling
 
 Later topics:
+
 - AsyncIO
 - Dataclasses
 - Logging
@@ -335,12 +363,14 @@ PROJECT PHILOSOPHY
 ==================================================
 
 Architecture quality is more important than:
+
 - flashy UI
 - advanced neural networks
 - excessive features
 - “hacker-style” visuals
 
 The system should prioritize:
+
 - clean modular design
 - realtime stability
 - explainable detection

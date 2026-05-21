@@ -7,7 +7,7 @@ class PacketData:
     src_ip: str
     dst_ip: str
     protocol: str
-    packet_size: str
+    packet_size: int
     timestamp: float
 
     src_port: Optional[int] = None

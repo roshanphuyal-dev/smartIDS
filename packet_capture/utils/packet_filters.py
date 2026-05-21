@@ -9,4 +9,4 @@ class PacketFilters:
 
     @staticmethod
     def web_traffic_filter():
-        return "TCP port 80 or tcp port 443"
+        return "(tcp port 80) or (tcp port 443)"
