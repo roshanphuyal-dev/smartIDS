@@ -71,3 +71,6 @@ dump.rdb
 # linux hidden files
 ._*
 
+# ML files
+ml/data/
+ml/saved_models/
