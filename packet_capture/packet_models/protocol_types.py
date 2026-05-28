@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class ProtocolType(Enum):
-    TCP = "TCP"
-    UDP = "UDP"
-    ICMP = "ICMP"
-    UNKNOWN = "UNKNOWN"
+    TCP = 6
+    UDP = 17
+    ICMP = 1
+    UNKNOWN = 0

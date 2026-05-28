@@ -19,19 +19,36 @@ class PacketParser:
         protocol = ProtocolType.UNKNOWN
         src_port = None
         dst_port = None
+        tcp_flags = None
+        tcp_window_size = None
+        tcp_header_length = None
+        transport_header_length = None
+        payload_size = 0
 
         if packet.haslayer(TCP):
+            tcp_layer = packet[TCP]
             protocol = ProtocolType.TCP
-            src_port = packet[TCP].sport
-            dst_port = packet[TCP].dport
+            src_port = tcp_layer.sport
+            dst_port = tcp_layer.dport
+            tcp_flags = int(tcp_layer.flags)
+            tcp_window_size = int(tcp_layer.window)
+            tcp_header_length = int(tcp_layer.dataofs) * 4 if tcp_layer.dataofs is not None else 0
+            transport_header_length = tcp_header_length
+            payload_size = len(bytes(tcp_layer.payload))
 
         elif packet.haslayer(UDP):
+            udp_layer = packet[UDP]
             protocol = ProtocolType.UDP
-            src_port = packet[UDP].sport
-            dst_port = packet[UDP].dport
+            src_port = udp_layer.sport
+            dst_port = udp_layer.dport
+            transport_header_length = 8
+            payload_size = len(bytes(udp_layer.payload))
 
         elif packet.haslayer(ICMP):
+            icmp_layer = packet[ICMP]
             protocol = ProtocolType.ICMP
+            transport_header_length = 8
+            payload_size = len(bytes(icmp_layer.payload))
 
         return PacketData(
             src_ip=src_ip,
@@ -41,4 +58,9 @@ class PacketParser:
             timestamp=time.time(),
             src_port=src_port,
             dst_port=dst_port,
+            tcp_flags=tcp_flags,
+            tcp_window_size=tcp_window_size,
+            tcp_header_length=tcp_header_length,
+            transport_header_length=transport_header_length,
+            payload_size=payload_size,
         )

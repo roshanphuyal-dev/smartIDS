@@ -13,21 +13,18 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
+from ml.features.schema import FEATURE_COLUMNS, LABEL_COLUMN
+from ml.features.cicids2017_mapping import (
+    CICIDS2017_TO_INTERNAL,
+    normalize_cicids2017_label,
+)
+
 TEST_PATH = Path("ml/data/cicids2017_test.csv")
-MODEL_PATH = Path("ml/saved_models/cicids2017_model.pkl")
-LABEL_ENCODER_PATH = Path("ml/saved_models/label_encoder.pkl")
-FEATURE_COLUMNS_PATH = Path("ml/saved_models/feature_columns.json")
+MODEL_PATH = Path("ml/saved_models/cicids2017_live_compatible_model.pkl")
+LABEL_ENCODER_PATH = Path("ml/saved_models/live_compatible_label_encoder.pkl")
+FEATURE_COLUMNS_PATH = Path("ml/saved_models/live_compatible_feature_columns.json")
 RESULTS_DIR = Path("ml/results")
 REPORT_PATH = RESULTS_DIR / "cicids2017_evaluation_report.md"
-
-LABEL_COLUMN = "Attack Type"
-
-
-def normalize_cicids_binary_label(label: str) -> str:
-    label = str(label).strip().lower()
-    if label in {"benign", "normal", "normal traffic"} or label.startswith("normal") or label.startswith("benign"):
-        return "benign"
-    return "attack"
 
 
 def main():
@@ -38,28 +35,37 @@ def main():
     with open(FEATURE_COLUMNS_PATH, "r", encoding="utf-8") as f:
         feature_columns = json.load(f)
 
+    if feature_columns != FEATURE_COLUMNS:
+        raise ValueError("Saved feature schema does not match canonical FEATURE_COLUMNS")
+
     model = joblib.load(MODEL_PATH)
     label_encoder = joblib.load(LABEL_ENCODER_PATH)
 
     df.columns = [col.strip() for col in df.columns]
+    df = df.rename(columns=CICIDS2017_TO_INTERNAL)
 
-    missing_features = [col for col in feature_columns if col not in df.columns]
-    if missing_features:
-        raise ValueError(
-            "Test dataset is missing trained feature columns: "
-            f"{missing_features[:10]}"
-        )
+    for feature in FEATURE_COLUMNS:
+        if feature not in df.columns:
+            df[feature] = 0
 
     if LABEL_COLUMN not in df.columns:
         raise ValueError(f"Label column '{LABEL_COLUMN}' not found in test dataset.")
 
     X_test = df[feature_columns].apply(pd.to_numeric, errors="coerce")
-    X_test = X_test.replace([np.inf, -np.inf], np.nan).dropna(axis=0)
+    X_test = X_test.replace([np.inf, -np.inf], 0).fillna(0)
     if X_test.empty:
         raise ValueError("No valid test rows remain after numeric feature cleaning.")
 
     df = df.loc[X_test.index]
-    y_test_raw = df[LABEL_COLUMN].apply(normalize_cicids_binary_label)
+    y_test_raw = df[LABEL_COLUMN].apply(normalize_cicids2017_label)
+
+    known_labels = set(label_encoder.classes_)
+    keep_mask = y_test_raw.isin(known_labels)
+    X_test = X_test.loc[keep_mask]
+    y_test_raw = y_test_raw.loc[keep_mask]
+
+    if X_test.empty:
+        raise ValueError("No test rows remain after filtering unknown labels.")
 
     y_test = label_encoder.transform(y_test_raw)
     y_pred = model.predict(X_test)
@@ -83,6 +89,17 @@ def main():
     matrix = confusion_matrix(y_test, y_pred, labels=labels)
     label_counts = y_test_raw.value_counts().to_string()
 
+    normal_label_name = "Normal Traffic"
+    normal_fpr = 0.0
+    if normal_label_name in label_encoder.classes_:
+        normal_idx = int(np.where(label_encoder.classes_ == normal_label_name)[0][0])
+        y_true_normal = y_test == normal_idx
+        y_pred_normal = y_pred == normal_idx
+
+        tn = int(np.sum((~y_true_normal) & (~y_pred_normal)))
+        fp = int(np.sum((~y_true_normal) & y_pred_normal))
+        normal_fpr = float(fp / (fp + tn)) if (fp + tn) > 0 else 0.0
+
     report = (
         "# CICIDS2017 Model Evaluation Report\n\n"
         "## Dataset\n\n"
@@ -101,6 +118,7 @@ def main():
         f"| Precision | {precision:.4f} |\n"
         f"| Recall | {recall:.4f} |\n"
         f"| F1 Score | {f1:.4f} |\n\n"
+        f"| Normal Traffic FPR | {normal_fpr:.4f} |\n\n"
         "## Classification Report\n\n"
         "```text\n"
         f"{class_report}\n"

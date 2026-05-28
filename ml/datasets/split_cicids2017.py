@@ -1,11 +1,10 @@
 from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from ml.features.schema import LABEL_COLUMN
 
 DATASET_PATH = Path("ml/data/cicids2017_cleaned.csv")
 OUTPUT_DIR = Path("ml/data")
-LABEL_COLUMN = "Attack Type"
-
 TRAIN_PATH = OUTPUT_DIR / "cicids2017_train.csv"
 TEST_PATH = OUTPUT_DIR / "cicids2017_test.csv"
 

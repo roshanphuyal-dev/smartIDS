@@ -4,10 +4,11 @@ from typing import List, Optional
 import pandas as pd  # type: ignore
 
 from ml.datasets.dataset_loader import DatasetLoader
+from ml.features.schema import LABEL_COLUMN
 
 
 class CICIDS2017Loader(DatasetLoader):
-    DEFAULT_LABEL_COLUMN = "Attack Type"
+    DEFAULT_LABEL_COLUMN = LABEL_COLUMN
 
     def __init__(
         self,
