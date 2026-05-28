@@ -1,4 +1,4 @@
-# smartIDS #Heimdall IDS
+# smartIDS or (Heimdall IDS)
 
 smartIDS is a smart intrusion detection system built with Python and modern web technologies. It captures realtime threats, analyzes traffic with machine learning, raises alerts, and blocks malicious activity automatically.
 

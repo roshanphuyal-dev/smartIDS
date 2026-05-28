@@ -1,334 +1,558 @@
-# SmartIDS Flow-Based IDS Redesign Plan
+# SmartIDS ML Runtime Correction Plan
 
-## Problem Statement
+## Scope
 
-SmartIDS has a major architectural mismatch:
+This plan defines the correction flow for SmartIDS ML development.
 
-1. ML training (CICIDS2017) uses 70-80 engineered flow/session-level features.
-2. Runtime live pipeline currently extracts only a handful of packet-level fields.
+The goal is to eliminate training-serving mismatch between the CICIDS2017-trained model and the real-time packet/session pipeline.
 
-This causes inference failures (feature shape mismatch) and/or unreliable predictions.
+Do not modify unrelated frontend, auth, websocket, or UI code unless explicitly required by the ML runtime path.
 
-Correct solution: move runtime to short-window flow/session aggregation and retrain ML on only runtime-computable features with a strict, persisted schema shared by training and inference.
+## Core Problem
 
-## Target Runtime Architecture
+The current ML model was trained on CICIDS2017 completed-flow features.
 
-incoming packets
--> Stage 1 packet heuristics (ultra-fast)
--> flow/session tracker (bidirectional, TTL, memory-bounded)
--> incremental flow feature updates
--> short aggregation window (time: 1-3s, packet-count: 5-20 packets)
--> feature alignment (exact schema/order, defaults, validation)
--> XGBoost prediction (binary: benign vs attack)
--> alert generation (merge Stage 1 + Stage 2 signals)
+The live project currently extracts only:
 
-Non-negotiable: `LiveSniffer._handle_packet` must remain parse + enqueue only (no I/O, ML, disk, network).
+```python
+protocol
+packet_count
+total_bytes
+duration
+avg_packet_size
+packet_rate
+byte_rate
+src_port
+dst_port
+```
 
-## Decisions Locked In
+This is not compatible with the trained feature set.
 
-1. Forward direction: packet-heuristic-forward (client->server inference).
-2. Protocol encoding: explicit mapping TCP=6, UDP=17, ICMP=1, UNKNOWN=0.
-3. Production labels: binary only for now (benign vs attack).
-4. Forward heuristic policy: service-port heuristic:
-   - infer server using well-known/privileged port rules, fallback to first-packet-forward if ambiguous.
+The result is training-serving skew: the model learns from rich offline flow features but receives weak live features during prediction.
 
-## Repo Reality (Verified)
+This must be corrected before improving accuracy, alerts, UI, or deployment.
 
-1. Capture: `packet_capture/` queue-based pipeline (`SnifferService` + `LiveSniffer`).
-2. Current session tracking exists: `traffic_engine/session_builder/SessionBuilder` + `TrafficSession` (directional today).
-3. Current feature extraction exists but minimal: `feature_engine/extractors/session_feature_extractor.py`.
-4. Training pipeline exists: `ml/training/train_cicids2017.py` + `CICIDS2017Loader` + `DatasetLoader`.
+## Non-Negotiable Rule
 
-## Phase 0: Define the Runtime Feature Contract (First Deliverable)
+Training features and runtime prediction features must be identical.
 
-Goal: a single feature schema used by both training and runtime, with strict alignment.
+One canonical feature schema must be used by:
 
-Deliverables:
-1. `feature_engine/schema/runtime_feature_schema.json`
-   - ordered list of feature names.
-2. `feature_engine/schema/feature_defaults.json`
-   - default values for any missing features at runtime.
-3. A loader utility that returns the ordered schema list for both runtime and training.
+```text
+dataset cleaning
+training
+evaluation
+model saving
+runtime prediction
+live feature extraction
+```
+
+No model should be trained on a feature that cannot be produced by the live packet/session pipeline.
+
+## Target Architecture
+
+```text
+packet_capture
+-> packet parser
+-> flow/session manager
+-> short-term flow aggregator
+-> live feature extractor
+-> early ML detector
+-> alert engine
+-> optional completed-flow classifier
+```
+
+The Scapy sniff callback must remain parse-and-enqueue only. No ML, DB, network calls, file I/O, or expensive aggregation belongs inside `LiveSniffer._handle_packet`.
+
+## Required Build Order
+
+### 1. Create Canonical Feature Schema
+
+Create:
+
+```text
+ml/features/schema.py
+```
+
+Define:
+
+```python
+FEATURE_COLUMNS = [
+    "dst_port",
+    "protocol",
+    "flow_duration",
+    "total_fwd_packets",
+    "total_fwd_bytes",
+    "flow_bytes_per_sec",
+    "flow_packets_per_sec",
+    "packet_len_min",
+    "packet_len_max",
+    "packet_len_mean",
+    "packet_len_std",
+    "packet_len_variance",
+    "avg_packet_size",
+    "fwd_packet_len_min",
+    "fwd_packet_len_max",
+    "fwd_packet_len_mean",
+    "fwd_packet_len_std",
+    "flow_iat_min",
+    "flow_iat_max",
+    "flow_iat_mean",
+    "flow_iat_std",
+    "fwd_iat_min",
+    "fwd_iat_max",
+    "fwd_iat_mean",
+    "fwd_iat_std",
+    "fwd_iat_total",
+    "fwd_packets_per_sec",
+    "fin_flag_count",
+    "syn_flag_count",
+    "rst_flag_count",
+    "psh_flag_count",
+    "ack_flag_count",
+    "urg_flag_count",
+    "fwd_header_length",
+    "init_win_bytes_forward",
+    "act_data_pkt_fwd",
+    "min_seg_size_forward",
+]
+
+LABEL_COLUMN = "Attack Type"
+```
+
+All training and prediction code must import this schema.
+
+Do not duplicate feature lists in multiple files.
+
+### 2. Map CICIDS2017 Columns to Internal Schema
+
+Create:
+
+```text
+ml/features/cicids2017_mapping.py
+```
+
+Use only live-compatible CICIDS2017 columns.
+
+Mapping:
+
+```python
+CICIDS2017_TO_INTERNAL = {
+    "Destination Port": "dst_port",
+    "Flow Duration": "flow_duration",
+    "Total Fwd Packets": "total_fwd_packets",
+    "Total Length of Fwd Packets": "total_fwd_bytes",
+    "Flow Bytes/s": "flow_bytes_per_sec",
+    "Flow Packets/s": "flow_packets_per_sec",
+    "Fwd Packet Length Max": "fwd_packet_len_max",
+    "Fwd Packet Length Min": "fwd_packet_len_min",
+    "Fwd Packet Length Mean": "fwd_packet_len_mean",
+    "Fwd Packet Length Std": "fwd_packet_len_std",
+    "Min Packet Length": "packet_len_min",
+    "Max Packet Length": "packet_len_max",
+    "Packet Length Mean": "packet_len_mean",
+    "Packet Length Std": "packet_len_std",
+    "Packet Length Variance": "packet_len_variance",
+    "Average Packet Size": "avg_packet_size",
+    "Fwd Packets/s": "fwd_packets_per_sec",
+    "FIN Flag Count": "fin_flag_count",
+    "PSH Flag Count": "psh_flag_count",
+    "ACK Flag Count": "ack_flag_count",
+    "Init_Win_bytes_forward": "init_win_bytes_forward",
+    "act_data_pkt_fwd": "act_data_pkt_fwd",
+    "min_seg_size_forward": "min_seg_size_forward",
+}
+```
+
+CICIDS2017 does not always include all required live fields directly.
+
+For missing fields, either derive them safely, set default neutral values, or remove them from `FEATURE_COLUMNS`.
+
+Never silently create fake high-signal features.
+
+### 3. Drop Bad Or Unsafe Training Features
+
+Do not train on these for the early real-time model:
+
+```text
+Bwd Packet Length Max
+Bwd Packet Length Min
+Bwd Packet Length Mean
+Bwd Packet Length Std
+Bwd Header Length
+Bwd Packets/s
+Bwd IAT Total
+Bwd IAT Mean
+Bwd IAT Std
+Bwd IAT Max
+Bwd IAT Min
+Active Mean
+Active Max
+Active Min
+Idle Mean
+Idle Max
+Idle Min
+Subflow Fwd Bytes
+Init_Win_bytes_backward
+```
+
+Reason: these depend on completed bidirectional flows, long observation windows, or reverse-direction stability that the current runtime system does not guarantee.
+
+### 4. Remove `src_port` From ML Features
+
+Do not use `src_port` as a model feature.
+
+Source ports are usually ephemeral and add noise.
+
+Keep `src_port` only as part of the session key:
+
+```python
+(src_ip, dst_ip, src_port, dst_port, protocol)
+```
+
+The ML feature is:
+
+```python
+dst_port
+```
+
+### 5. Encode Protocol Correctly
+
+Do not pass raw strings like `TCP`, `UDP`, or `ICMP` into the model.
+
+Use this encoding everywhere:
+
+```python
+TCP = 6
+UDP = 17
+ICMP = 1
+UNKNOWN = 0
+```
+
+The same encoding must be used in training and runtime.
+
+## Runtime Session Object Requirements
+
+Update the session model so it can calculate live-compatible features.
+
+Required fields:
+
+```python
+packet_lengths: list[int]
+fwd_packet_lengths: list[int]
+packet_timestamps: list[float]
+fwd_packet_timestamps: list[float]
+packet_count: int
+total_bytes: int
+fwd_packet_count: int
+fwd_total_bytes: int
+flag_counts: dict[str, int]
+fwd_header_length: int
+init_win_bytes_forward: int | None
+act_data_pkt_fwd: int
+min_seg_size_forward: int | None
+src_ip: str
+dst_ip: str
+src_port: int
+dst_port: int
+protocol: int
+start_time: float
+last_seen: float
+```
+
+## Runtime Feature Extractor Requirements
+
+Replace the current weak extractor with a full live-compatible extractor.
+
+Required behavior:
+
+```python
+class SessionFeatureExtractor:
+    def extract(self, session) -> dict:
+        ...
+```
 
 Rules:
-1. Runtime feature dicts MUST be alignable into the exact ordered schema.
-2. Training MUST select and rename dataset columns to match schema keys exactly.
-3. Inference MUST validate vector length/order and fail fast if schema mismatches.
 
-Initial schema (v1, runtime-computable):
-1. flow_duration
-2. total_fwd_packets
-3. total_bwd_packets
-4. total_fwd_bytes
-5. total_bwd_bytes
-6. flow_bytes_per_sec
-7. flow_packets_per_sec
-8. average_packet_size
-9. packet_length_std
-10. inter_arrival_time_mean
-11. syn_flag_count
-12. ack_flag_count
-13. rst_flag_count
-14. psh_flag_count
-15. active_time_mean
-16. idle_time_mean
-17. destination_port
-18. protocol
+1. Always return every feature in `FEATURE_COLUMNS`.
+2. Never return extra features.
+3. Never return NaN or infinity.
+4. If division by zero occurs, return `0`.
+5. If a list has no values, return `0` for min, max, mean, std, and variance.
+6. Output column order must match `FEATURE_COLUMNS`.
 
-Notes:
-1. Feature set intentionally smaller than CICFlowMeter to keep runtime feasible.
-2. Defaults must be deterministic (typically 0) to prevent runtime crashes early in flows.
+## Required Helper Functions
 
-## Phase 1: Upgrade Packet Parsing (Minimal, Runtime Needed Only)
+Add safe statistical utilities:
 
-Goal: parse only what Stage 1 and flow aggregation require.
+```text
+feature_engine/stats.py
+```
 
-Changes:
-1. `packet_capture/packet_models/packet_data.py`
-   - add TCP flag info (at minimum SYN/ACK/RST/PSH boolean or a bitmask).
-   - keep protocol as string if desired, but also provide numeric id via mapping at feature time.
-2. `packet_capture/parsers/packet_parser.py`
-   - extract TCP flags when TCP exists.
-   - keep packet_size and timestamp consistent (prefer `time.time()` already used).
+Functions:
 
-Constraints:
-1. No heavy computation in sniff callback.
-2. No prints in hot paths except rate-limited debug mode.
+```python
+safe_min(values) -> float
+safe_max(values) -> float
+safe_mean(values) -> float
+safe_std(values) -> float
+safe_variance(values) -> float
+safe_rate(value, duration) -> float
+safe_iat_stats(timestamps) -> dict
+sanitize_feature_dict(features) -> dict
+```
 
-## Phase 2: Implement Bidirectional Flow Tracking (Core Runtime Change)
+All feature extraction must use these helpers.
 
-Problem today:
-1. Current `SessionKey` is directional (src->dst), which breaks fwd/bwd stats.
+## Short-Term Flow Aggregation
 
-Deliverables:
-1. `traffic_engine/flow_tracker/flow_key.py`
-   - bidirectional canonical key for 5-tuple:
-     - endpoints A=(ip,port), B=(ip,port), protocol
-     - order endpoints deterministically (sorted tuple)
-2. `traffic_engine/flow_tracker/flow_state.py`
-   - per-flow rolling stats + metadata:
-     - start_ts, last_ts
-     - counters: fwd/bwd packets, fwd/bwd bytes
-     - ring buffers or online accumulators for:
-       - packet sizes (std)
-       - IAT deltas (mean)
-     - TCP flag counters (syn/ack/rst/psh)
-     - active/idle segmentation accumulators
-     - client_endpoint and server_endpoint (from heuristic)
-3. `traffic_engine/flow_tracker/flow_tracker.py`
-   - `update(packet) -> FlowWindowSnapshot | None`
-   - responsibilities:
-     - determine flow key
-     - determine packet direction fwd/bwd (client->server vs server->client)
-     - update flow state
-     - emit window snapshots by:
-       - time window (e.g. every 2s per flow)
-       - packet-count window (e.g. every 10 packets)
-     - evict flows by idle TTL + memory bounds (LRU)
+Do not wait until a flow fully ends before predicting.
 
-Forward Direction Heuristic (service-port policy):
-1. Determine endpoints from first seen packet:
-   - endpoint1=(src_ip,src_port), endpoint2=(dst_ip,dst_port)
-2. Choose server endpoint:
-   - if one port is in a well-known list (80,443,22,53,123,445,3389,139,143,110,25,587,993,995,3306,5432,6379,27017, etc), that endpoint is server.
-   - else if one port <=1024 and other >1024, <=1024 is server.
-   - else ambiguous: fallback to first-packet-forward (src is client, dst is server).
-3. Once set, do not change direction for that flow.
+Prediction must happen during the session.
 
-## Phase 3: Flow Window Feature Extraction (Incremental, Runtime-Compatible)
+Minimum prediction triggers:
 
-Deliverables:
-1. `feature_engine/extractors/flow_feature_extractor.py`
-   - input: FlowWindowSnapshot/FlowState
-   - output: dict matching runtime schema keys exactly
+```text
+session age >= 1 second
+or packet_count >= 5
+or every N new packets
+or every M milliseconds
+or on flow end
+```
 
-Computations (v1):
-1. flow_duration = last_ts - start_ts (guard >=0)
-2. total_fwd_packets / total_bwd_packets
-3. total_fwd_bytes / total_bwd_bytes
-4. flow_bytes_per_sec = total_bytes / duration (guard duration>0)
-5. flow_packets_per_sec = total_packets / duration (guard duration>0)
-6. average_packet_size = total_bytes / total_packets (guard total_packets>0)
-7. packet_length_std = std over packet sizes in window (online Welford preferred)
-8. inter_arrival_time_mean = mean IAT (online mean)
-9. syn/ack/rst/psh counts from packet flags
-10. active_time_mean / idle_time_mean via gap thresholding:
-   - ACTIVE_GAP (e.g. 1.0s) defines whether a gap is active continuation vs idle gap
-11. destination_port = server port (chosen from heuristic)
-12. protocol = numeric id (TCP=6, UDP=17, ICMP=1, UNKNOWN=0)
+Recommended staged prediction points:
 
-## Phase 4: Stage 1 Packet-Level Heuristics (Immediate Response)
+```text
+1 second
+3 seconds
+5 seconds
+10 seconds
+flow end
+```
 
-Deliverables:
-1. `detection_engine/heuristics/heuristic_engine.py`
-2. `detection_engine/heuristics/state.py` (TTL counters, rolling windows)
-3. `detection_engine/heuristics/rules.py` (pure rule functions)
+The session manager must support repeated predictions for the same session.
 
-Rules to implement (v1):
-1. SYN flood suspicion:
-   - SYN rate to (dst_ip,dst_port) over last 1s
-   - SYN/ACK imbalance per dst
-2. Port scan suspicion:
-   - unique dst_port count contacted by src_ip over last T seconds
-3. Abnormal packet rate / bursts:
-   - packets/sec and bytes/sec per src_ip (sliding window or token bucket)
-4. Suspicious flag combos:
-   - NULL flags, Xmas tree, SYN+FIN, etc
-5. Malformed/odd traffic:
-   - missing ports where expected, invalid lengths (best-effort)
+## Session Expiration Policy
 
-Output:
-1. `HeuristicResult`: severity score + list of rule hits + minimal context.
+Expire sessions when:
 
-Performance:
-1. Must stay microsecond/millisecond class and run in the consumer thread, never in sniff callback.
+```text
+TCP FIN seen
+TCP RST seen
+idle timeout exceeded
+max session duration exceeded
+```
 
-## Phase 5: Redesign ML Training to Match Runtime (Critical)
+Recommended defaults:
 
-Goal: train ONLY on runtime schema features and persist artifacts needed for alignment.
+```python
+IDLE_TIMEOUT_SECONDS = 30
+MAX_SESSION_DURATION_SECONDS = 120
+```
 
-Deliverables:
-1. Dataset column mapping for CICIDS2017 -> runtime schema keys (explicit dict).
-2. Updated loader/training pipeline:
-   - clean malformed rows
-   - remove NaN/inf robustly
-   - normalize labels
-   - remove constants/useless columns
-   - remove duplicates
-   - select only runtime features
-   - stratified 80/20 split
-   - persist:
-     - model
-     - label encoder
-     - feature schema (must match runtime schema exactly)
-     - schema hash/version metadata
+Do not allow unbounded session memory growth.
 
-Preprocessing improvements:
-1. Replace inf with NaN.
-2. Prefer imputation (median) rather than dropping all NaN rows, to preserve data volume.
-3. Enforce required feature columns presence; fail training if missing.
-4. Cast numeric dtypes to reduce memory (float32 where safe).
+## Model Strategy
 
-Model strategy:
-1. Production runtime uses only XGBoostClassifier.
-2. Multiple models only for benchmarking/training.
+Use a two-model design.
 
-## Phase 6: Runtime Prediction Pipeline (Low Latency, Strict Alignment)
+### Model A: Early Detector
 
-Deliverables:
-1. `runtime/model_loader.py`
-   - loads XGBoost model, label encoder, schema + schema hash
-2. `runtime/feature_aligner.py`
-   - dict -> ordered vector
-   - apply defaults for missing keys
-   - optionally reject unknown keys
-   - validate length/order against schema
-3. `runtime/predictor.py`
-   - uses `predict_proba`, applies thresholding
-4. `runtime/pipeline.py`
-   - orchestrates:
-     - packet -> heuristics -> flow_tracker -> window -> feature extraction -> alignment -> ML -> alert
+Purpose:
 
-Queueing / threading:
-1. sniff thread: parse + enqueue only
-2. consumer thread: heuristics + flow tracking
-3. ML inference thread (optional but recommended): consumes window snapshots; keeps inference off the main consumer hot loop
+```text
+fast real-time detection
+partial-flow prediction
+low-latency alerts
+```
 
-Backpressure:
-1. bounded queues
-2. if full: drop newest or oldest deterministically; increment counters; never block sniff callback.
+Use only live-compatible short-flow features.
 
-## Phase 7: Integrate Into Existing PacketProcessor
+This is the primary runtime model.
 
-Current `PacketProcessor` prints session features per packet.
+### Model B: Completed-Flow Classifier
 
-Target:
-1. `PacketProcessor` becomes the orchestrator:
-   - run Stage 1 heuristics on each packet
-   - update flow tracker
-   - on window emission:
-     - extract aligned flow features
-     - run ML inference
-     - output a single alert record
+Purpose:
 
-Replace `print` spam with:
-1. structured logging
-2. rate-limited debug output
-3. alert-only output by default
+```text
+post-session classification
+higher-confidence final labeling
+```
 
-## Phase 8: Custom Decision Tree (Academic / Benchmark Only)
+This can use richer features later, but only after the flow is complete.
 
-Deliverables:
-1. `ml/models/custom_decision_tree.py`
-   - `fit()`, `predict()`
-   - gini impurity
-   - recursive splitting
-   - max_depth
-   - multiclass support
-2. Use only for benchmarking/training comparisons, not runtime.
+Do not block real-time alerts waiting for Model B.
 
-Future optional:
-1. custom Random Forest built atop the custom Decision Tree (after DT is stable).
+## Training Pipeline Correction
 
-## Phase 9: Tests and Verification (Before Expanding Features)
+Create or update:
 
-Unit tests:
-1. Flow key canonicalization (direction-independent key).
-2. Forward heuristic correctness (service-port rules + fallback).
-3. Window emission (time + packet windows).
-4. Feature correctness on synthetic packet sequences.
-5. Feature alignment schema enforcement.
-6. Training/inference parity: the saved `feature_columns.json` must equal runtime schema.
+```text
+ml/training/train_cicids2017_live_compatible.py
+```
 
-Smoke tests:
-1. Train model on runtime feature subset.
-2. Load model + schema and run prediction on synthetic flow vectors.
-3. Live run: `sudo .venv/bin/python -m packet_capture.main`:
-   - no crashes
-   - windows emit
-   - alerts produced
+Required flow:
 
-## Recommended Execution Order (Concrete)
+```text
+load CICIDS2017
+clean column names
+map CICIDS2017 columns to internal schema
+drop unsupported columns
+encode labels
+replace inf with 0
+fill NaN with 0
+select FEATURE_COLUMNS only
+split train/test
+train model
+evaluate
+save model
+save label encoder
+save scaler if used
+save feature schema snapshot
+```
 
-1. Phase 0 schema contract
-2. Phase 2 flow tracker skeleton + TTL + window emission
-3. Phase 3 flow feature extractor for schema
-4. Phase 5 retrain XGBoost on schema-only features (persist artifacts)
-5. Phase 6 runtime loader + aligner + predictor
-6. Phase 4 heuristics engine and integrate
-7. Phase 7 integrate into PacketProcessor end-to-end
-8. Phase 9 tests
-9. Phase 8 custom decision tree + benchmarks
-10. iterate: feature expansion only after v1 stability
+The saved model artifact must include or be paired with:
 
-## Default Config (v1)
+```text
+model file
+label encoder
+feature columns
+protocol encoding
+training timestamp
+```
 
-1. flow idle timeout: 30s
-2. window interval: 2s
-3. packet window: 10 packets
-4. ACTIVE_GAP: 1.0s
-5. max flows: 50k (tune)
-6. queues:
-   - packet_queue: 10000 (existing)
-   - flow_window_queue: 5000
-   - alert_queue: 5000
-7. ML decision threshold: 0.5 (configurable)
+## Evaluation Requirements
 
-## Alert Format (Single Unified Output)
+Evaluation must report:
 
-1. timestamp
-2. flow_key (canonical endpoints + protocol)
-3. stage1:
-   - severity score
-   - rule hits
-4. stage2:
-   - predicted_label
-   - probability
-   - model version / schema hash
-5. optional: flow feature snapshot (debug flag)
+```text
+accuracy
+precision
+recall
+f1-score
+confusion matrix
+per-class metrics
+false positive rate for Normal Traffic
+```
 
-## Non-Goals (This Iteration)
+Accuracy alone is not acceptable.
 
-1. Full 70-80 CICIDS features at runtime.
-2. Waiting for long sessions to complete before detection.
-3. Inline IPS blocking (userland IDS with reactive mitigation only).
+For IDS, false positives matter.
+
+A model with high accuracy but poor attack recall or high normal false positives is not acceptable.
+
+## Data Cleaning Rules
+
+Apply these rules before training:
+
+```python
+df = df.replace([float("inf"), float("-inf")], 0)
+df = df.fillna(0)
+```
+
+Normalize labels consistently:
+
+```text
+BENIGN / Normal Traffic -> Normal Traffic
+DoS variants -> DoS
+DDoS variants -> DDoS
+PortScan -> Port Scanning
+FTP-Patator / SSH-Patator -> Brute Force
+Web Attack variants -> Web Attacks
+Bot -> Bots
+```
+
+Keep label mapping centralized.
+
+## Do Not Overbuild
+
+Do not build deep learning models yet.
+
+Do not build complex dashboards yet.
+
+Do not optimize UI before fixing runtime ML correctness.
+
+Do not add backward-flow features until bidirectional flow tracking is reliable.
+
+Do not chase maximum CICIDS2017 benchmark accuracy if the feature set cannot be reproduced live.
+
+## Acceptance Criteria
+
+The correction is complete only when all conditions are true:
+
+```text
+1. Training uses only FEATURE_COLUMNS.
+2. Runtime extractor outputs exactly FEATURE_COLUMNS.
+3. Model prediction accepts live session features without missing columns.
+4. No NaN/inf reaches the model.
+5. src_port is not used as an ML feature.
+6. protocol is numerically encoded.
+7. Session manager supports repeated prediction before flow end.
+8. Session expiration prevents memory leaks.
+9. Evaluation reports per-class metrics, not only accuracy.
+10. Early detector can generate alerts from partial flows.
+```
+
+## Priority Execution Plan
+
+### Phase 1: Feature Contract
+
+```text
+create ml/features/schema.py
+create ml/features/cicids2017_mapping.py
+centralize label mapping
+remove duplicated feature lists
+```
+
+### Phase 2: Dataset Pipeline
+
+```text
+clean CICIDS2017
+map columns
+drop unsupported features
+train live-compatible model
+save model artifacts
+evaluate with per-class metrics
+```
+
+### Phase 3: Runtime Extractor
+
+```text
+expand Session object
+track packet lengths
+track timestamps
+track TCP flags
+track TCP window size
+track header lengths
+calculate IAT stats
+return exact FEATURE_COLUMNS
+```
+
+### Phase 4: Flow Manager
+
+```text
+maintain session table
+update session per packet
+run prediction during active session
+expire sessions safely
+run final prediction on flow end
+```
+
+### Phase 5: Alert Integration
+
+```text
+send early model result to alert engine
+threshold confidence
+avoid duplicate alerts for same session
+update alert if final model changes classification
+```
+
+## Final Constraint
+
+The system must be designed around this principle:
+
+```text
+Train only on what the live system can honestly observe.
+```
+
+Anything else produces fake accuracy and unreliable real-time IDS behavior.

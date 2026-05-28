@@ -1,378 +1,256 @@
-# SmartIDS Agent Instructions
+# SmartIDS Project Context
 
-==================================================
-PROJECT IDENTITY
-==================================================
+## Project Identity
 
-Project Type:
-Realtime AI-assisted Intrusion Detection and Reactive Response System (IDS/IPS)
+SmartIDS is a realtime AI-assisted intrusion detection system with automated reactive mitigation.
 
-IMPORTANT:
-This is NOT a kernel-level inline IPS.
+It is not a kernel-level inline IPS. Scapy passively sniffs packet copies after packets enter the OS networking stack. Malicious packets may already reach applications before detection. The response engine can block or rate-limit future traffic only.
 
-The system uses passive packet sniffing with Scapy.
-Packets are observed as copies after entering the OS networking stack.
+Correct positioning: realtime AI-assisted IDS with reactive mitigation.
 
-Therefore:
+## Current Correction Focus
 
-- malicious packets may already reach applications before detection
-- response engine blocks FUTURE traffic only
-- system performs reactive mitigation, not perfect prevention
+The most important current work is eliminating ML training-serving mismatch.
 
-Correct project positioning:
-“Realtime AI-assisted IDS with automated reactive mitigation.”
+The existing CICIDS2017-trained model uses completed-flow features, while the live runtime currently produces only a small weak feature set. This causes feature shape mismatches, fake benchmark confidence, and unreliable live predictions.
 
-==================================================
-CORE ARCHITECTURE
-==================================================
+The system must follow this rule:
 
-Packet Capture
-↓
-Packet Parsing
-↓
-Traffic Session Building
-↓
-Feature Extraction
-↓
-ML Detection Engine
-↓
-Threat Decision Engine
-↓
-Response Engine
-↓
-FastAPI + WebSocket Streaming
-↓
-Realtime Dashboard
+```text
+Train only on what the live system can honestly observe.
+```
 
-==================================================
-HYBRID PACKET CAPTURE ARCHITECTURE
-==================================================
+Training features and runtime prediction features must be identical.
 
-FINAL DECISION:
-Hybrid Thread + Queue + AsyncIO Architecture
+## Target Runtime Architecture
 
-Structure:
+```text
+packet_capture
+-> packet parser
+-> flow/session manager
+-> short-term flow aggregator
+-> live feature extractor
+-> early ML detector
+-> alert engine
+-> optional completed-flow classifier
+-> response engine
+-> backend/websocket/dashboard
+```
 
-- Dedicated thread for Scapy packet sniffing
-- Queue-based buffering between capture and processing
-- AsyncIO consumers for downstream processing
+## Capture Architecture
 
-Reasoning:
-Scapy is blocking internally and not truly async-native.
+SmartIDS uses a hybrid thread plus queue architecture.
 
-Capture thread responsibilities:
+Scapy is blocking internally and not async-native, so live sniffing runs in a dedicated thread. The sniff callback must parse minimally, enqueue packet data, and return immediately.
 
-- sniff packet
-- minimally parse
-- enqueue packet
-- return immediately
+Processing work happens outside the sniff callback:
 
-Processing responsibilities:
+```text
+session aggregation
+feature extraction
+ML inference
+alert generation
+logging
+websocket broadcasting
+persistence
+response handling
+```
 
-- packet parsing
-- session aggregation
-- feature extraction
-- ML inference
-- logging
-- websocket broadcasting
+Packet capture must never block on ML, DB, network, file I/O, or long-running computations.
 
-IMPORTANT RULE:
-Packet capture must NEVER block.
+## ML Runtime Requirements
 
-==================================================
-CRITICAL ENGINEERING RULES
-==================================================
+One canonical feature schema must be used by:
 
-NEVER:
+```text
+dataset cleaning
+training
+evaluation
+model saving
+runtime prediction
+live feature extraction
+```
 
-- generate massive monolithic files
-- tightly couple modules
-- place ML logic inside API routes
-- place packet capture logic inside frontend/backend layers
-- use blocking operations inside async pipelines
-- directly couple response engine to iptables
-- overengineer UI before backend stability
-- use sklearn classifiers for final ML logic
+The canonical schema belongs in `ml/features/schema.py`.
 
-ALWAYS:
+All training and runtime code must import `FEATURE_COLUMNS`; no duplicated feature lists.
 
-- separate capture, parsing, session building, ML, threat scoring, and response handling into isolated modules
-- use queue-based producer-consumer pipelines
-- keep APIs thin and business logic modular
-- explain engineering tradeoffs when making decisions
-- prioritize throughput and packet safety over flashy features
-- design for scalability and maintainability
+Protocol encoding must be identical in training and runtime:
 
-==================================================
-PROJECT GOALS
-==================================================
+```python
+TCP = 6
+UDP = 17
+ICMP = 1
+UNKNOWN = 0
+```
 
-Primary goals:
+`src_port` must not be an ML feature. It is allowed only in the session key. The model may use `dst_port`.
 
-- realtime packet monitoring
-- session-aware traffic analysis
-- custom feature extraction
-- explainable ML detection
-- automated reactive mitigation
-- realtime dashboard visualization
-- scalable backend architecture
+No NaN or infinity may reach the model.
 
-Secondary goals:
+## Model Strategy
 
-- portfolio-quality architecture
-- backend engineering showcase
-- cybersecurity showcase
-- realtime systems showcase
+Use a two-model strategy.
 
-==================================================
-ML REQUIREMENTS
-==================================================
+Model A is the early detector. It runs during active sessions, uses only live-compatible short-flow features, and is the primary runtime model.
 
-IMPORTANT:
-Do NOT use sklearn classifiers for production logic.
+Model B is a completed-flow classifier. It can use richer features later, but only after a flow is complete. It must not block real-time alerts.
 
-ML must be manually implemented for academic explainability.
+Deep learning and complex benchmark chasing are out of scope until runtime correctness is fixed.
 
-Model 1:
-Statistical Anomaly Detection
+## CICIDS2017 Training Rules
 
-- manual Z-score implementation
-- moving averages
-- standard deviation
-- anomaly thresholds
+CICIDS2017 columns must be mapped through `ml/features/cicids2017_mapping.py`.
 
-Detects:
+Use only live-compatible columns for the early detector.
 
-- traffic spikes
-- flooding
-- abnormal packet rates
-- scanning behavior
+Do not train the early detector on completed-flow backward features, unstable reverse-direction features, active/idle long-window features, or any field the live system cannot currently compute.
 
-Model 2:
-Manual Decision Tree Classifier
+Centralize label normalization. Evaluation must include accuracy, precision, recall, F1, confusion matrix, per-class metrics, and false positive rate for Normal Traffic.
 
-Implement manually:
+## Runtime Session Requirements
 
-- entropy
-- information gain
-- recursive splitting
-- leaf classification
-- tree traversal
+The runtime session object must track enough information to produce the canonical schema:
 
-Detects:
+```text
+packet lengths
+forward packet lengths
+packet timestamps
+forward packet timestamps
+packet and byte counters
+forward packet and byte counters
+TCP flag counts
+forward header length
+initial forward TCP window bytes
+active forward data packet count
+minimum forward segment size
+source and destination endpoints
+numeric protocol
+start time
+last seen time
+```
 
-- SYN flood
-- brute force behavior
-- suspicious traffic patterns
-- port scanning
+Feature extraction must use safe helpers for min, max, mean, std, variance, rates, IAT stats, and sanitization.
 
-Statistical and explainable methods are preferred over deep learning.
+If a value cannot be computed safely, use neutral `0`.
 
-==================================================
-RESPONSE ENGINE DESIGN
-==================================================
+## Short-Term Flow Aggregation
 
-IMPORTANT:
-Use firewall abstraction layer.
+Do not wait for full flow completion before predicting.
 
-Correct structure:
+Prediction should happen during the session at staged points such as 1 second, 3 seconds, 5 seconds, 10 seconds, and flow end.
 
+Minimum triggers include session age >= 1 second, packet_count >= 5, periodic packet/time windows, and flow end.
+
+The session manager must support repeated predictions for the same session.
+
+## Session Expiration
+
+Expire sessions when TCP FIN is seen, TCP RST is seen, idle timeout is exceeded, or max session duration is exceeded.
+
+Recommended defaults:
+
+```python
+IDLE_TIMEOUT_SECONDS = 30
+MAX_SESSION_DURATION_SECONDS = 120
+```
+
+Session memory must be bounded.
+
+## Response Engine Direction
+
+Use a firewall abstraction layer. Do not directly couple response logic to one platform command.
+
+Expected shape:
+
+```text
 response_engine
-↓
-firewall abstraction layer
-↓
-linux adapter
-windows adapter
-mac adapter
+-> firewall abstraction layer
+-> linux adapter
+-> windows adapter
+-> mac adapter
+```
 
 Generic methods:
 
-- block_ip()
-- unblock_ip()
-- rate_limit_ip()
-- is_blocked()
+```text
+block_ip()
+unblock_ip()
+rate_limit_ip()
+is_blocked()
+```
 
 Linux-first implementation is acceptable initially.
 
-==================================================
-PERFORMANCE RULES
-==================================================
+## Performance Rules
 
-Primary focus:
+Prioritize sustained throughput, queue buffering, packet loss minimization, and realtime responsiveness.
 
-- sustained throughput
-- queue buffering
-- packet loss minimization
-- realtime responsiveness
-
-IMPORTANT:
-Packet streams can become massive.
-
-Avoid:
-Packet → DB writes directly
+Avoid direct packet-to-database writes.
 
 Preferred flow:
-Packet → Queue → Aggregation → ML → DB
 
-Rules:
+```text
+Packet -> Queue -> Aggregation -> ML -> Alert -> Optional Persistence
+```
 
-- minimize blocking operations
-- batch expensive operations
-- aggregate before persistence
-- isolate ML from capture layer
-- reduce unnecessary logging
+Reduce unnecessary logging in hot paths. Batch expensive operations where possible.
 
-==================================================
-SECURITY RULES
-==================================================
+## Security Rules
 
-- never trust packet payloads
-- validate and sanitize all inputs
-- protect websocket endpoints
-- avoid unsafe shell execution
-- isolate firewall command execution
-- prevent parser crashes from malformed packets
+Never trust packet payloads.
 
-==================================================
-FASTAPI BACKEND STRUCTURE
-==================================================
+Validate and sanitize all inputs.
 
-Recommended structure:
+Prevent parser crashes from malformed packets.
 
-- routers/
-- services/
-- schemas/
-- dependencies/
-- websocket/
+Protect websocket endpoints when backend work is introduced.
 
-IMPORTANT:
-Keep routes thin.
-Business logic belongs in services/modules.
+Avoid unsafe shell execution.
 
-==================================================
-CURRENT PROJECT STRUCTURE
-==================================================
+Isolate firewall command execution behind adapters.
 
-packet_capture/
+## Current Directory Roles
 
-- sniffers/
-- parsers/
-- packet_models/
-- utils/
-- tests/
+```text
+packet_capture/   Scapy sniffers, parsers, packet models, capture orchestration
+traffic_engine/   Session and flow management
+feature_engine/   Runtime feature extraction and safe stats helpers
+ml/               Models, dataset loaders, training, evaluation, schema, mappings
+threat_engine/    Threat scoring and alert decisions
+response_engine/  Reactive mitigation and firewall abstraction
+backend/          Future API and websocket layer
+client/           Future dashboard
+tests/            Future automated verification
+```
 
-traffic_engine/
+## Development Priorities
 
-- session building
-- aggregation
-- flow tracking
+1. Create the canonical ML feature contract.
+2. Correct the CICIDS2017 dataset pipeline to train only on live-compatible features.
+3. Expand runtime session tracking to produce the canonical feature set.
+4. Replace the weak runtime extractor with exact-schema extraction.
+5. Add short-term flow aggregation and repeated active-session prediction.
+6. Add safe session expiration and memory bounds.
+7. Integrate early ML alerts.
+8. Add completed-flow classification later only after early detection works.
 
-feature_engine/
+## Non-Goals Until Runtime ML Is Correct
 
-- feature extraction
-- transformations
-- feature storage
+Do not build deep learning models.
 
-ml/
+Do not build complex dashboards.
 
-- anomaly detection
-- decision tree
-- training
-- inference
+Do not optimize UI.
 
-threat_engine/
+Do not add backward-flow-heavy features until bidirectional tracking is reliable.
 
-- threat scoring
-- classification
-- alert management
+Do not chase maximum CICIDS2017 benchmark accuracy if the live system cannot reproduce the features.
 
-response_engine/
+## Developer Learning Context
 
-- firewall abstraction
-- blacklist management
-- rate limiting
+Prefer incremental development, clear architecture, and short explanations of tradeoffs.
 
-backend/
+Avoid giant code dumps and unnecessary advanced abstractions.
 
-- FastAPI
-- WebSockets
-- APIs
-- auth
-
-client/
-
-- React dashboard
-- realtime visualization
-
-==================================================
-MVP PRIORITY ORDER
-==================================================
-
-1. Packet capture (thread + queue)
-2. Packet parsing
-3. Traffic/session aggregation
-4. Feature extraction
-5. Z-score anomaly detection
-6. Threat scoring
-7. WebSocket streaming
-8. Dashboard visualization
-9. Decision tree classifier
-10. Reactive blocking
-11. Database integration
-12. Optimization & deployment
-
-==================================================
-DEVELOPER LEARNING CONTEXT
-==================================================
-
-Developer is a beginner and prefers:
-
-- step-by-step guidance
-- concept explanations
-- architectural reasoning
-- incremental development
-- learning-focused mentoring
-
-Avoid:
-
-- giant code dumps
-- overcomplicated abstractions
-- unnecessary advanced networking internals
-- excessive optimization too early
-
-Current learning priorities:
-
-1. Classes & OOP
-2. Queues
-3. Threading
-4. Networking fundamentals
-5. Dictionaries/lists/sets
-6. Exception handling
-
-Later topics:
-
-- AsyncIO
-- Dataclasses
-- Logging
-- Type hints
-- Time-window statistics
-- Performance optimization
-
-==================================================
-PROJECT PHILOSOPHY
-==================================================
-
-Architecture quality is more important than:
-
-- flashy UI
-- advanced neural networks
-- excessive features
-- “hacker-style” visuals
-
-The system should prioritize:
-
-- clean modular design
-- realtime stability
-- explainable detection
-- operational clarity
-- maintainable engineering
+Current learning priorities include classes and OOP, queues, threading, networking fundamentals, dictionaries, lists, sets, and exception handling.
