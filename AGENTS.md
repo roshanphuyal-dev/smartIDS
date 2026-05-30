@@ -9,16 +9,26 @@
 
 ## Current Priority
 
-- The active project goal is ML runtime correction.
-- Fix training-serving mismatch before accuracy tuning, UI work, deployment, or alert polish.
-- Training features and runtime prediction features must be identical.
+- The active project goal is safe IDS background engine implementation without disrupting current IDS capture or existing ML model artifacts.
+- Preserve the current working IDS process while adding small, opt-in engine components around it.
+- Continue protecting the ML runtime contract: training features and runtime prediction features must stay identical.
 - Reference `PLAN.md` for the execution plan and `CONTEXT.md` for architecture constraints.
+- Record every planned, active, and completed implementation step in `backend/CHECKLIST.md` before and after code changes.
 
 ## Scope Control
 
 - Do not modify frontend, auth, websocket, UI, or unrelated backend code unless required by the ML runtime path.
 - Do not overbuild dashboards, deep learning models, or completed-flow classifiers before the early live-compatible detector works.
 - Prefer small, verifiable changes over large rewrites.
+- Keep implementations short and focused. Complete one safe increment, verify it, update `backend/CHECKLIST.md`, then suggest exactly one next implementation step.
+- Major database, API contract, project-plan, or model changes must be explicitly logged in `backend/CHECKLIST.md` under the major change log.
+
+## Next IDS Engine Implementation
+
+- Build the background engine in safe increments around the existing flow: capture -> queue -> session builder -> feature extractor -> heuristic/ML detection -> response policy/blocker -> backend reporter.
+- Do not replace the current packet processor or model loading path unless a later verified step requires it.
+- Prefer additive, opt-in integrations controlled by environment variables or new small modules.
+- First implementation focus: backend reporting contracts for session-level IDS events and alerts, without changing model files or retraining.
 
 ## Capture Architecture Constraint
 

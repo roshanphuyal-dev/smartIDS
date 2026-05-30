@@ -1,3 +1,7 @@
+from datetime import datetime, timezone
+import hashlib
+import time
+
 from traffic_engine.session_builder.session_builder import SessionBuilder
 from traffic_engine.session_builder.session_key import SessionKey
 from feature_engine.extractors.session_feature_extractor import SessionFeatureExtractor
@@ -11,7 +15,13 @@ from packet_capture.utils.logger import IDSLogger, log_event
 
 
 class PacketProcessor:
-    def __init__(self, alert_publisher=None):
+    def __init__(
+        self,
+        alert_publisher=None,
+        event_publisher=None,
+        session_update_publisher=None,
+        block_event_publisher=None,
+    ):
         self.heuristic_detector = HeuristicDetector()
         self.session_builder = SessionBuilder()
         self.feature_extractor = SessionFeatureExtractor()
@@ -22,12 +32,70 @@ class PacketProcessor:
         self.completed_flow_predictor = CompletedFlowPredictor()
         self.alert_store = FeatureStore(max_size=1000)
         self.alert_publisher = alert_publisher
+        self.event_publisher = event_publisher
+        self.session_update_publisher = session_update_publisher
+        self.block_event_publisher = block_event_publisher
         self.alert_confidence_threshold = 0.80
         self.auto_blocker = AutoBlocker()
         self.response_policy = ResponsePolicy()
         self._session_alert_state = {}
+        self._processed_command_ids = set()
         self.logger = IDSLogger.get_logger("packet.processor")
         self._log_startup_status()
+
+    def apply_backend_command(self, command: dict) -> tuple[bool, str]:
+        command_id = str(command.get("command_id", "")).strip()
+        action = str(command.get("action", "")).strip().lower()
+        ip_address = str(command.get("ip_address", "")).strip()
+        duration_seconds = int(command.get("duration_seconds", 300) or 300)
+
+        if not action or not ip_address:
+            return False, "invalid_command"
+
+        if command_id and command_id in self._processed_command_ids:
+            return True, "duplicate_command"
+
+        if action == "block":
+            ok, status = self.auto_blocker.manual_block(
+                ip_address=ip_address,
+                duration_seconds=max(1, duration_seconds),
+            )
+        elif action == "unblock":
+            ok, status = self.auto_blocker.manual_unblock(ip_address=ip_address)
+        elif action == "watchlist":
+            ok, status = self.auto_blocker.watchlist_ip(ip_address=ip_address)
+        elif action == "unwatchlist":
+            ok, status = self.auto_blocker.unwatchlist_ip(ip_address=ip_address)
+        else:
+            return False, "unsupported_action"
+
+        if ok and command_id:
+            self._processed_command_ids.add(command_id)
+
+        if ok:
+            mapped_action = "blocked"
+            if action == "unblock":
+                mapped_action = "unblocked"
+            elif action == "watchlist":
+                mapped_action = "watchlisted"
+            elif action == "unwatchlist":
+                mapped_action = "unwatchlisted"
+
+            self._publish_block_event(
+                event_id=f"cmd-{command_id}" if command_id else f"cmd-{ip_address}-{action}",
+                source_ip=ip_address,
+                action_taken=mapped_action,
+                reason=f"manual_{action}",
+                detection_method="manual",
+                session_id=None,
+                source_port=None,
+                destination_ip=None,
+                destination_port=None,
+                protocol=None,
+                timestamp=time.time(),
+            )
+
+        return ok, status
 
     def _log_startup_status(self):
         firewall_name = "none"
@@ -47,6 +115,9 @@ class PacketProcessor:
                 "completed_model_path": str(self.completed_flow_predictor.model_path),
                 "completed_encoder_path": str(self.completed_flow_predictor.encoder_path),
                 "alert_publisher_enabled": callable(self.alert_publisher),
+                "event_publisher_enabled": callable(self.event_publisher),
+                "session_update_publisher_enabled": callable(self.session_update_publisher),
+                "block_event_publisher_enabled": callable(self.block_event_publisher),
                 "alert_confidence_threshold": self.alert_confidence_threshold,
                 "bruteforce_window_seconds": self.response_policy.bruteforce_window_seconds,
                 "bruteforce_attempt_threshold": self.response_policy.bruteforce_attempt_threshold,
@@ -58,6 +129,22 @@ class PacketProcessor:
 
     def process(self, packet):
         self.auto_blocker.expire_blocks()
+
+        if self.auto_blocker.is_currently_blocked(packet.src_ip):
+            self.auto_blocker.record_detection_activity(
+                ip_address=packet.src_ip,
+                attack_type="blocked_ip_activity",
+                action="blocked",
+                timestamp=packet.timestamp,
+            )
+
+        if self.auto_blocker.is_watchlisted(packet.src_ip):
+            self.auto_blocker.record_detection_activity(
+                ip_address=packet.src_ip,
+                attack_type="watchlisted_ip_activity",
+                action="watchlisted",
+                timestamp=packet.timestamp,
+            )
 
         heuristic_decision = self.heuristic_detector.evaluate_packet(packet)
 
@@ -81,6 +168,12 @@ class PacketProcessor:
                 "reason": heuristic_decision.reason,
             }
             self.heuristic_events.add(heuristic_event)
+            self.auto_blocker.record_detection_activity(
+                ip_address=packet.src_ip,
+                attack_type=heuristic_decision.reason,
+                action="allowed",
+                timestamp=packet.timestamp,
+            )
 
             action = self.response_policy.classify_heuristic_action(heuristic_decision.score)
             if action == "high_temp_block":
@@ -104,6 +197,24 @@ class PacketProcessor:
                 }
                 self.alert_store.add(heuristic_alert)
                 self._publish_alert(heuristic_alert)
+                if blocked:
+                    self._publish_block_event(
+                        event_id=f"heuristic-{packet.src_ip}-{int(packet.timestamp * 1000)}",
+                        source_ip=packet.src_ip,
+                        action_taken="blocked",
+                        reason="heuristic_high_confidence",
+                        detection_method="heuristic",
+                        session_id=(
+                            f"{packet.src_ip}:{packet.src_port}-"
+                            f"{packet.dst_ip}:{packet.dst_port}-"
+                            f"{packet.protocol}"
+                        ),
+                        source_port=packet.src_port,
+                        destination_ip=packet.dst_ip,
+                        destination_port=packet.dst_port,
+                        protocol=packet.protocol,
+                        timestamp=packet.timestamp,
+                    )
 
         if brute_force_suspected:
             blocked, block_status = self.auto_blocker.temp_block(
@@ -126,6 +237,30 @@ class PacketProcessor:
             }
             self.alert_store.add(brute_force_alert)
             self._publish_alert(brute_force_alert)
+            if blocked:
+                self._publish_block_event(
+                    event_id=f"bruteforce-{packet.src_ip}-{int(packet.timestamp * 1000)}",
+                    source_ip=packet.src_ip,
+                    action_taken="blocked",
+                    reason="bruteforce_detected",
+                    detection_method="heuristic",
+                    session_id=(
+                        f"{packet.src_ip}:{packet.src_port}-"
+                        f"{packet.dst_ip}:{packet.dst_port}-"
+                        f"{packet.protocol}"
+                    ),
+                    source_port=packet.src_port,
+                    destination_ip=packet.dst_ip,
+                    destination_port=packet.dst_port,
+                    protocol=packet.protocol,
+                    timestamp=packet.timestamp,
+                )
+            self.auto_blocker.record_detection_activity(
+                ip_address=packet.src_ip,
+                attack_type="Brute Force",
+                action="blocked" if blocked else "allowed",
+                timestamp=packet.timestamp,
+            )
 
         session_key = SessionKey.from_packet(packet)
         session = self.session_builder.process_packet(packet)
@@ -135,6 +270,13 @@ class PacketProcessor:
             self.feature_store.add(features)
 
             prediction = self.live_predictor.predict(features)
+            self._publish_session_update(
+                session_key=session_key,
+                session=session,
+                session_state="active",
+                prediction=prediction,
+                heuristic_decision=heuristic_decision,
+            )
             if prediction is not None:
                 event = {
                     "src_ip": session.src_ip,
@@ -148,6 +290,13 @@ class PacketProcessor:
                     "timestamp": session.last_seen,
                 }
                 self.ml_events.add(event)
+                self._publish_prediction_event(
+                    session_key=session_key,
+                    session=session,
+                    prediction=prediction,
+                    features=features,
+                    event_type="ml_live_prediction",
+                )
                 log_event(
                     self.logger,
                     "info",
@@ -184,6 +333,26 @@ class PacketProcessor:
                         "timestamp": session.last_seen,
                     }
                     self._emit_session_alert(session_key, alert)
+                    if blocked:
+                        self._publish_block_event(
+                            event_id=f"ml-live-{session.src_ip}-{int(session.last_seen * 1000)}",
+                            source_ip=session.src_ip,
+                            action_taken="blocked",
+                            reason=prediction["label"],
+                            detection_method="ml",
+                            session_id=self._session_key_str(session_key),
+                            source_port=session.src_port,
+                            destination_ip=session.dst_ip,
+                            destination_port=session.dst_port,
+                            protocol=session.protocol,
+                            timestamp=session.last_seen,
+                        )
+                    self.auto_blocker.record_detection_activity(
+                        ip_address=session.src_ip,
+                        attack_type=prediction["label"],
+                        action="blocked" if blocked else "allowed",
+                        timestamp=session.last_seen,
+                    )
 
         finalized = self.session_builder.finalize_session_if_needed(packet)
         if finalized is not None:
@@ -191,6 +360,23 @@ class PacketProcessor:
             final_key = finalized["session_key"]
             final_features = self.feature_extractor.extract(final_session)
             final_prediction = self.completed_flow_predictor.predict(final_features)
+            self._publish_session_update(
+                session_key=final_key,
+                session=final_session,
+                session_state=finalized["reason"],
+                prediction=final_prediction,
+                heuristic_decision=heuristic_decision,
+            )
+
+            if final_prediction is not None:
+                self._publish_prediction_event(
+                    session_key=final_key,
+                    session=final_session,
+                    prediction=final_prediction,
+                    features=final_features,
+                    event_type="ml_completed_flow_prediction",
+                    is_final=True,
+                )
 
             if final_prediction is not None and self._should_alert(final_prediction):
                 blocked, block_status = self.auto_blocker.temp_block(
@@ -213,6 +399,26 @@ class PacketProcessor:
                     "is_final": True,
                 }
                 self._emit_session_alert(final_key, final_alert, is_final=True)
+                if blocked:
+                    self._publish_block_event(
+                        event_id=f"ml-final-{final_session.src_ip}-{int(final_session.last_seen * 1000)}",
+                        source_ip=final_session.src_ip,
+                        action_taken="blocked",
+                        reason=final_prediction["label"],
+                        detection_method="ml",
+                        session_id=self._session_key_str(final_key),
+                        source_port=final_session.src_port,
+                        destination_ip=final_session.dst_ip,
+                        destination_port=final_session.dst_port,
+                        protocol=final_session.protocol,
+                        timestamp=final_session.last_seen,
+                    )
+                self.auto_blocker.record_detection_activity(
+                    ip_address=final_session.src_ip,
+                    attack_type=final_prediction["label"],
+                    action="blocked" if blocked else "allowed",
+                    timestamp=final_session.last_seen,
+                )
 
     def _should_alert(self, prediction: dict) -> bool:
         if prediction["label"] == "Normal Traffic":
@@ -228,6 +434,154 @@ class PacketProcessor:
             self.alert_publisher(alert)
         except Exception:
             pass
+
+    def _publish_block_event(
+        self,
+        event_id: str,
+        source_ip: str,
+        action_taken: str,
+        reason: str,
+        detection_method: str,
+        session_id: str | None,
+        source_port: int | None,
+        destination_ip: str | None,
+        destination_port: int | None,
+        protocol: int | None,
+        timestamp: float,
+    ):
+        if not callable(self.block_event_publisher):
+            return
+
+        payload = {
+            "event_id": event_id,
+            "timestamp": datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat(),
+            "source_ip": source_ip,
+            "action_taken": action_taken,
+            "reason": reason,
+            "detection_method": detection_method,
+            "session_id": session_id,
+            "source_port": source_port,
+            "destination_ip": destination_ip,
+            "destination_port": destination_port,
+            "protocol": protocol,
+        }
+
+        try:
+            self.block_event_publisher(payload)
+        except Exception:
+            pass
+
+    def _publish_prediction_event(
+        self,
+        session_key: SessionKey,
+        session,
+        prediction: dict,
+        features: dict,
+        event_type: str,
+        is_final: bool = False,
+    ):
+        if not callable(self.event_publisher):
+            return
+
+        confidence = float(prediction.get("confidence", 0.0))
+        label = str(prediction.get("label", "Unknown"))
+        session_id = self._session_key_str(session_key)
+        timestamp = float(session.last_seen)
+        event_id = self._prediction_event_id(session_id, event_type, label, timestamp)
+        action = "allow" if label == "Normal Traffic" else "alert"
+
+        event = {
+            "schema_version": "1.0",
+            "event_id": event_id,
+            "ts": datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(),
+            "source": session.src_ip,
+            "model": event_type,
+            "prediction": label,
+            "confidence": confidence,
+            "severity": self._severity_from_prediction(label, confidence),
+            "action": action,
+            "protocol": session.protocol,
+            "features": {
+                **dict(features),
+                "session_id": session_id,
+                "source_ip": session.src_ip,
+                "destination_ip": session.dst_ip,
+                "source_port": session.src_port,
+                "destination_port": session.dst_port,
+                "session_duration": session.duration(),
+                "session_packet_count": session.packet_count,
+                "session_byte_count": session.total_bytes,
+                "is_final": is_final,
+            },
+        }
+
+        try:
+            self.event_publisher(event)
+        except Exception:
+            pass
+
+    def _publish_session_update(
+        self,
+        session_key: SessionKey,
+        session,
+        session_state: str,
+        prediction: dict | None,
+        heuristic_decision,
+    ):
+        if not callable(self.session_update_publisher):
+            return
+
+        session_id = self._session_key_str(session_key)
+        confidence = 0.0 if prediction is None else float(prediction.get("confidence", 0.0))
+        ml_prediction = None if prediction is None else str(prediction.get("label", "Unknown"))
+
+        session_update = {
+            "session_id": session_id,
+            "timestamp": datetime.fromtimestamp(float(session.last_seen), tz=timezone.utc).isoformat(),
+            "source_ip": session.src_ip,
+            "destination_ip": session.dst_ip,
+            "source_port": session.src_port,
+            "destination_port": session.dst_port,
+            "protocol": session.protocol,
+            "duration": session.duration(),
+            "packet_count": session.packet_count,
+            "byte_count": session.total_bytes,
+            "session_state": session_state,
+            "risk_score": self._risk_score(ml_prediction, confidence, heuristic_decision.score),
+            "ml_prediction": ml_prediction,
+            "heuristic_result": {
+                "suspicious": heuristic_decision.suspicious,
+                "reason": heuristic_decision.reason,
+                "score": heuristic_decision.score,
+            },
+        }
+
+        try:
+            self.session_update_publisher(session_update)
+        except Exception:
+            pass
+
+    def _risk_score(self, label: str | None, confidence: float, heuristic_score: int) -> float:
+        ml_score = 0.0 if label in (None, "Normal Traffic") else confidence
+        heuristic_score_normalized = min(1.0, max(0.0, float(heuristic_score) / 10.0))
+        return round(max(ml_score, heuristic_score_normalized), 4)
+
+    def _prediction_event_id(
+        self,
+        session_id: str,
+        event_type: str,
+        label: str,
+        timestamp: float,
+    ) -> str:
+        raw = f"{session_id}:{event_type}:{label}:{int(timestamp * 1000)}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+    def _severity_from_prediction(self, label: str, confidence: float) -> str:
+        if label == "Normal Traffic":
+            return "low"
+        if confidence >= self.alert_confidence_threshold:
+            return "high"
+        return "medium"
 
     def _session_key_str(self, session_key: SessionKey) -> str:
         return (
