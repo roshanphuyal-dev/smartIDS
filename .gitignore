@@ -74,3 +74,6 @@ dump.rdb
 # ML files
 ml/data/
 ml/saved_models/
+
+# Local runtime state
+.smartids-runtime.env
