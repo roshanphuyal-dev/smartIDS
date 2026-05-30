@@ -13,6 +13,7 @@ class SessionBuilder:
     def __init__(self):
         self.sessions = {}
         self._prediction_state = {}
+        self._pending_finalizations = []
 
     def process_packet(self, packet):
         self._expire_stale_sessions(packet.timestamp)
@@ -103,22 +104,36 @@ class SessionBuilder:
         return None
 
     def _expire_stale_sessions(self, now_timestamp: float):
-        stale_keys = []
+        stale_items = []
 
         for key, session in self.sessions.items():
             idle_seconds = now_timestamp - session.last_seen
             duration_seconds = now_timestamp - session.start_time
 
             if idle_seconds >= self.IDLE_TIMEOUT_SECONDS:
-                stale_keys.append(key)
+                stale_items.append((key, "idle_timeout"))
                 continue
 
             if duration_seconds >= self.MAX_SESSION_DURATION_SECONDS:
-                stale_keys.append(key)
+                stale_items.append((key, "max_duration"))
 
-        for key in stale_keys:
-            self.sessions.pop(key, None)
+        for key, reason in stale_items:
+            stale_session = self.sessions.pop(key, None)
             self._prediction_state.pop(key, None)
+            if stale_session is None:
+                continue
+            self._pending_finalizations.append(
+                {
+                    "session": stale_session,
+                    "session_key": key,
+                    "reason": reason,
+                }
+            )
+
+    def drain_finalized_sessions(self):
+        finalized = list(self._pending_finalizations)
+        self._pending_finalizations.clear()
+        return finalized
 
     def _mark_session_for_final_prediction(self, session_key):
         state = self._prediction_state.get(session_key)

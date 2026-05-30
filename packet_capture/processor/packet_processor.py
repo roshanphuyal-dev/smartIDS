@@ -265,6 +265,10 @@ class PacketProcessor:
         session_key = SessionKey.from_packet(packet)
         session = self.session_builder.process_packet(packet)
 
+        expired_finalized = self.session_builder.drain_finalized_sessions()
+        for finalized in expired_finalized:
+            self._process_finalized_session(finalized, heuristic_decision)
+
         if self.session_builder.should_predict(packet):
             features = self.feature_extractor.extract(session)
             self.feature_store.add(features)
@@ -356,69 +360,7 @@ class PacketProcessor:
 
         finalized = self.session_builder.finalize_session_if_needed(packet)
         if finalized is not None:
-            final_session = finalized["session"]
-            final_key = finalized["session_key"]
-            final_features = self.feature_extractor.extract(final_session)
-            final_prediction = self.completed_flow_predictor.predict(final_features)
-            self._publish_session_update(
-                session_key=final_key,
-                session=final_session,
-                session_state=finalized["reason"],
-                prediction=final_prediction,
-                heuristic_decision=heuristic_decision,
-            )
-
-            if final_prediction is not None:
-                self._publish_prediction_event(
-                    session_key=final_key,
-                    session=final_session,
-                    prediction=final_prediction,
-                    features=final_features,
-                    event_type="ml_completed_flow_prediction",
-                    is_final=True,
-                )
-
-            if final_prediction is not None and self._should_alert(final_prediction):
-                blocked, block_status = self.auto_blocker.temp_block(
-                    ip_address=final_session.src_ip,
-                    duration_seconds=self.response_policy.ml_confirmed_block_seconds,
-                )
-                final_alert = {
-                    "type": "ml_completed_flow_update",
-                    "attack_type": final_prediction["label"],
-                    "confidence": final_prediction["confidence"],
-                    "blocked": blocked,
-                    "block_status": block_status,
-                    "block_duration_seconds": self.response_policy.ml_confirmed_block_seconds,
-                    "src_ip": final_session.src_ip,
-                    "dst_ip": final_session.dst_ip,
-                    "src_port": final_session.src_port,
-                    "dst_port": final_session.dst_port,
-                    "protocol": final_session.protocol,
-                    "timestamp": final_session.last_seen,
-                    "is_final": True,
-                }
-                self._emit_session_alert(final_key, final_alert, is_final=True)
-                if blocked:
-                    self._publish_block_event(
-                        event_id=f"ml-final-{final_session.src_ip}-{int(final_session.last_seen * 1000)}",
-                        source_ip=final_session.src_ip,
-                        action_taken="blocked",
-                        reason=final_prediction["label"],
-                        detection_method="ml",
-                        session_id=self._session_key_str(final_key),
-                        source_port=final_session.src_port,
-                        destination_ip=final_session.dst_ip,
-                        destination_port=final_session.dst_port,
-                        protocol=final_session.protocol,
-                        timestamp=final_session.last_seen,
-                    )
-                self.auto_blocker.record_detection_activity(
-                    ip_address=final_session.src_ip,
-                    attack_type=final_prediction["label"],
-                    action="blocked" if blocked else "allowed",
-                    timestamp=final_session.last_seen,
-                )
+            self._process_finalized_session(finalized, heuristic_decision)
 
     def _should_alert(self, prediction: dict) -> bool:
         if prediction["label"] == "Normal Traffic":
@@ -582,6 +524,72 @@ class PacketProcessor:
         if confidence >= self.alert_confidence_threshold:
             return "high"
         return "medium"
+
+    def _process_finalized_session(self, finalized: dict, heuristic_decision):
+        final_session = finalized["session"]
+        final_key = finalized["session_key"]
+        final_features = self.feature_extractor.extract(final_session)
+        final_prediction = self.completed_flow_predictor.predict(final_features)
+
+        self._publish_session_update(
+            session_key=final_key,
+            session=final_session,
+            session_state=finalized["reason"],
+            prediction=final_prediction,
+            heuristic_decision=heuristic_decision,
+        )
+
+        if final_prediction is not None:
+            self._publish_prediction_event(
+                session_key=final_key,
+                session=final_session,
+                prediction=final_prediction,
+                features=final_features,
+                event_type="ml_completed_flow_prediction",
+                is_final=True,
+            )
+
+        if final_prediction is not None and self._should_alert(final_prediction):
+            blocked, block_status = self.auto_blocker.temp_block(
+                ip_address=final_session.src_ip,
+                duration_seconds=self.response_policy.ml_confirmed_block_seconds,
+            )
+            final_alert = {
+                "type": "ml_completed_flow_update",
+                "attack_type": final_prediction["label"],
+                "confidence": final_prediction["confidence"],
+                "blocked": blocked,
+                "block_status": block_status,
+                "block_duration_seconds": self.response_policy.ml_confirmed_block_seconds,
+                "src_ip": final_session.src_ip,
+                "dst_ip": final_session.dst_ip,
+                "src_port": final_session.src_port,
+                "dst_port": final_session.dst_port,
+                "protocol": final_session.protocol,
+                "timestamp": final_session.last_seen,
+                "is_final": True,
+            }
+            self._emit_session_alert(final_key, final_alert, is_final=True)
+            if blocked:
+                self._publish_block_event(
+                    event_id=f"ml-final-{final_session.src_ip}-{int(final_session.last_seen * 1000)}",
+                    source_ip=final_session.src_ip,
+                    action_taken="blocked",
+                    reason=final_prediction["label"],
+                    detection_method="ml",
+                    session_id=self._session_key_str(final_key),
+                    source_port=final_session.src_port,
+                    destination_ip=final_session.dst_ip,
+                    destination_port=final_session.dst_port,
+                    protocol=final_session.protocol,
+                    timestamp=final_session.last_seen,
+                )
+            self.auto_blocker.record_detection_activity(
+                ip_address=final_session.src_ip,
+                attack_type=final_prediction["label"],
+                action="blocked" if blocked else "allowed",
+                timestamp=final_session.last_seen,
+            )
 
     def _session_key_str(self, session_key: SessionKey) -> str:
         return (
