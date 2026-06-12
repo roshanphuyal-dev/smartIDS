@@ -11,6 +11,7 @@ from ml.runtime.live_predictor import LivePredictor
 from ml.runtime.completed_flow_predictor import CompletedFlowPredictor
 from response_engine.auto_blocker import AutoBlocker
 from response_engine.policy import ResponsePolicy
+from packet_capture.forwarding.contracts import build_ids_event_payload, build_session_upsert_payload
 from packet_capture.utils.logger import IDSLogger, log_event
 
 
@@ -425,37 +426,14 @@ class PacketProcessor:
         if not callable(self.event_publisher):
             return
 
-        confidence = float(prediction.get("confidence", 0.0))
-        label = str(prediction.get("label", "Unknown"))
-        session_id = self._session_key_str(session_key)
-        timestamp = float(session.last_seen)
-        event_id = self._prediction_event_id(session_id, event_type, label, timestamp)
-        action = "allow" if label == "Normal Traffic" else "alert"
-
-        event = {
-            "schema_version": "1.0",
-            "event_id": event_id,
-            "ts": datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(),
-            "source": session.src_ip,
-            "model": event_type,
-            "prediction": label,
-            "confidence": confidence,
-            "severity": self._severity_from_prediction(label, confidence),
-            "action": action,
-            "protocol": session.protocol,
-            "features": {
-                **dict(features),
-                "session_id": session_id,
-                "source_ip": session.src_ip,
-                "destination_ip": session.dst_ip,
-                "source_port": session.src_port,
-                "destination_port": session.dst_port,
-                "session_duration": session.duration(),
-                "session_packet_count": session.packet_count,
-                "session_byte_count": session.total_bytes,
-                "is_final": is_final,
-            },
-        }
+        event = build_ids_event_payload(
+            session_key=session_key,
+            session=session,
+            prediction=prediction,
+            features=features,
+            event_type=event_type,
+            is_final=is_final,
+        )
 
         try:
             self.event_publisher(event)
@@ -473,30 +451,13 @@ class PacketProcessor:
         if not callable(self.session_update_publisher):
             return
 
-        session_id = self._session_key_str(session_key)
-        confidence = 0.0 if prediction is None else float(prediction.get("confidence", 0.0))
-        ml_prediction = None if prediction is None else str(prediction.get("label", "Unknown"))
-
-        session_update = {
-            "session_id": session_id,
-            "timestamp": datetime.fromtimestamp(float(session.last_seen), tz=timezone.utc).isoformat(),
-            "source_ip": session.src_ip,
-            "destination_ip": session.dst_ip,
-            "source_port": session.src_port,
-            "destination_port": session.dst_port,
-            "protocol": session.protocol,
-            "duration": session.duration(),
-            "packet_count": session.packet_count,
-            "byte_count": session.total_bytes,
-            "session_state": session_state,
-            "risk_score": self._risk_score(ml_prediction, confidence, heuristic_decision.score),
-            "ml_prediction": ml_prediction,
-            "heuristic_result": {
-                "suspicious": heuristic_decision.suspicious,
-                "reason": heuristic_decision.reason,
-                "score": heuristic_decision.score,
-            },
-        }
+        session_update = build_session_upsert_payload(
+            session_key=session_key,
+            session=session,
+            session_state=session_state,
+            prediction=prediction,
+            heuristic_decision=heuristic_decision,
+        )
 
         try:
             self.session_update_publisher(session_update)
