@@ -1,3 +1,7 @@
 [submodule "backend"]
 	path = backend
 	url = https://github.com/iIntrusion-detection-system/ids-api.git
+[submodule "database"]
+	path = database
+	url = https://github.com/iIntrusion-detection-system/ids_database.git
+	branch = main
