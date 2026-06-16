@@ -1,11 +1,12 @@
 param(
-    [string]$BaseUrl = "http://127.0.0.1:3100",
+    [string]$BaseUrl = "http://127.0.0.1:3000",
     [switch]$HideWindows
 )
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $scriptDir
 $backendDir = Join-Path $root "backend"
 $frontendDir = Join-Path $root "frontend"
 $backendCompose = Join-Path $backendDir "docker-compose.yml"
@@ -64,7 +65,7 @@ Write-Host "[6/6] Starting IDS runtime (packet capture + ML) in new terminal..."
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location -LiteralPath '$root'; `$env:SMARTIDS_IDS_EVENT_ENDPOINT='$backendBaseUrl/api/v1/ids-events'; `$env:SMARTIDS_SESSION_UPDATE_ENDPOINT='$backendBaseUrl/api/v1/sessions/upsert'; `$env:SMARTIDS_BLOCK_EVENT_ENDPOINT='$backendBaseUrl/api/v1/block-events/upsert'; `$env:SMARTIDS_COMMANDS_ENDPOINT='$backendBaseUrl/api/v1/engine-commands'; `$env:SMARTIDS_COMMANDS_ACK_ENDPOINT='$backendBaseUrl/api/v1/engine-commands/ack'; & '$pythonExe' -m packet_capture.main"
+    "Set-Location -LiteralPath '$root'; `$env:SMARTIDS_IDS_EVENT_ENDPOINT='$backendBaseUrl/api/v1/ids-events'; `$env:SMARTIDS_SESSION_UPDATE_ENDPOINT='$backendBaseUrl/api/v1/sessions/upsert'; `$env:SMARTIDS_BLOCK_EVENT_ENDPOINT='$backendBaseUrl/api/v1/block-events/upsert'; `$env:SMARTIDS_ENGINE_TELEMETRY_ENDPOINT='$backendBaseUrl/api/v1/engine-telemetry'; `$env:SMARTIDS_COMMANDS_ENDPOINT='$backendBaseUrl/api/v1/engine-commands'; `$env:SMARTIDS_COMMANDS_ACK_ENDPOINT='$backendBaseUrl/api/v1/engine-commands/ack'; & '$pythonExe' -m packet_capture.main"
 ) -WindowStyle $windowStyle
 
 $runtimeStatePath = Join-Path $root ".smartids-runtime.env"
@@ -78,7 +79,7 @@ Set-Content -LiteralPath $runtimeStatePath -Value @(
 
 Write-Host "Started SmartIDS services."
 Write-Host "- Backend API:    $backendBaseUrl"
-Write-Host "- Frontend:       http://127.0.0.1:3001 (or next available port)"
+Write-Host "- Frontend:       http://127.0.0.1:3000"
 Write-Host "- IDS runtime:    packet_capture.main"
 Write-Host "- Runtime file:   .smartids-runtime.env"
 if ($HideWindows) {

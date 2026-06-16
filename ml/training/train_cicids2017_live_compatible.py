@@ -3,7 +3,6 @@ import json
 from datetime import datetime, timezone
 
 import joblib
-import numpy as np
 import pandas as pd
 
 from ml.evaluation.metrics import MetricsEvaluator
@@ -11,10 +10,8 @@ from ml.models.sklearn_model import SklearnModel
 from ml.models.xgboost_model import XGBoostModel
 
 from ml.features.schema import FEATURE_COLUMNS, LABEL_COLUMN
-from ml.features.cicids2017_mapping import (
-    CICIDS2017_TO_INTERNAL,
-    normalize_cicids2017_label,
-)
+from ml.features.cicids2017_mapping import normalize_cicids2017_label
+from ml.features.cicids2017_validation import prepare_cicids2017_features
 
 
 DATASET_PATH = Path("ml/data/cicids2017_train.csv")
@@ -50,19 +47,9 @@ def _prepare_live_compatible_dataset(df: pd.DataFrame):
     if LABEL_COLUMN not in df.columns:
         raise ValueError(f"Label column '{LABEL_COLUMN}' not found in dataset")
 
-    mapped = df.rename(columns=CICIDS2017_TO_INTERNAL).copy()
+    X = prepare_cicids2017_features(df)
 
-    for feature in FEATURE_COLUMNS:
-        if feature not in mapped.columns:
-            mapped[feature] = 0
-
-    mapped[LABEL_COLUMN] = mapped[LABEL_COLUMN].apply(normalize_cicids2017_label)
-
-    X = mapped[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce")
-    X = X.replace([np.inf, -np.inf], 0)
-    X = X.fillna(0)
-
-    y_raw = mapped[LABEL_COLUMN].astype(str)
+    y_raw = df[LABEL_COLUMN].apply(normalize_cicids2017_label).astype(str)
     label_encoder = joblib.load(MODEL_OUTPUT_DIR / "label_encoder.pkl") if (MODEL_OUTPUT_DIR / "label_encoder.pkl").exists() else None
 
     if label_encoder is None:

@@ -4,7 +4,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $scriptDir
 $venvPython = Join-Path $root ".venv_windows\Scripts\python.exe"
 $runtimeStatePath = Join-Path $root ".smartids-runtime.env"
 
@@ -18,7 +19,7 @@ if (-not $BaseUrl) {
 }
 
 if (-not $BaseUrl) {
-    $BaseUrl = "http://127.0.0.1:3100"
+    $BaseUrl = "http://127.0.0.1:3000"
 }
 
 if (Test-Path -LiteralPath $venvPython) {

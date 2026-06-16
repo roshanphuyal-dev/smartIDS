@@ -2,7 +2,7 @@ import json
 from urllib import error, request
 
 
-class FastAPIIDSEventForwarder:
+class FastAPIEngineTelemetryForwarder:
     def __init__(
         self,
         endpoint_url: str,
@@ -13,8 +13,8 @@ class FastAPIIDSEventForwarder:
         self.timeout_seconds = timeout_seconds
         self.internal_service_token = internal_service_token.strip()
 
-    def publish_event(self, event: dict) -> bool:
-        payload = json.dumps(event).encode("utf-8")
+    def publish_telemetry(self, telemetry: dict) -> bool:
+        payload = json.dumps(telemetry).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if self.internal_service_token:
             headers["x-smartids-internal-token"] = self.internal_service_token

@@ -14,10 +14,8 @@ from sklearn.metrics import (
 )
 
 from ml.features.schema import FEATURE_COLUMNS, LABEL_COLUMN
-from ml.features.cicids2017_mapping import (
-    CICIDS2017_TO_INTERNAL,
-    normalize_cicids2017_label,
-)
+from ml.features.cicids2017_mapping import normalize_cicids2017_label
+from ml.features.cicids2017_validation import prepare_cicids2017_features
 
 TEST_PATH = Path("ml/data/cicids2017_test.csv")
 MODEL_PATH = Path("ml/saved_models/cicids2017_live_compatible_model.pkl")
@@ -42,19 +40,13 @@ def main():
     label_encoder = joblib.load(LABEL_ENCODER_PATH)
 
     df.columns = [col.strip() for col in df.columns]
-    df = df.rename(columns=CICIDS2017_TO_INTERNAL)
-
-    for feature in FEATURE_COLUMNS:
-        if feature not in df.columns:
-            df[feature] = 0
 
     if LABEL_COLUMN not in df.columns:
         raise ValueError(f"Label column '{LABEL_COLUMN}' not found in test dataset.")
 
-    X_test = df[feature_columns].apply(pd.to_numeric, errors="coerce")
-    X_test = X_test.replace([np.inf, -np.inf], 0).fillna(0)
+    X_test = prepare_cicids2017_features(df)
     if X_test.empty:
-        raise ValueError("No valid test rows remain after numeric feature cleaning.")
+        raise ValueError("Test dataset contains no rows.")
 
     df = df.loc[X_test.index]
     y_test_raw = df[LABEL_COLUMN].apply(normalize_cicids2017_label)

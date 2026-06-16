@@ -1,7 +1,6 @@
 fastapi==0.121.1
 joblib==1.5.3
 numpy==2.4.6
-nvidia-nccl-cu12==2.30.4
 pandas==3.0.3
 pydantic==2.12.4
 python-dateutil==2.9.0.post0

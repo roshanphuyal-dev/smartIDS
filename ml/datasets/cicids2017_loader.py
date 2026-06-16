@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
+import numpy as np
 import pandas as pd  # type: ignore
 
 from ml.datasets.dataset_loader import DatasetLoader
-from ml.features.schema import LABEL_COLUMN
+from ml.features.cicids2017_mapping import CICIDS2017_TO_INTERNAL
+from ml.features.schema import FEATURE_COLUMNS, LABEL_COLUMN
 
 
 class CICIDS2017Loader(DatasetLoader):
@@ -24,6 +26,7 @@ class CICIDS2017Loader(DatasetLoader):
             random_state=random_state,
         )
         self.binary_classification = binary_classification
+        self.feature_columns = list(FEATURE_COLUMNS)
 
     def load_csv(self) -> pd.DataFrame:
         path = Path(self.dataset_path)
@@ -56,6 +59,7 @@ class CICIDS2017Loader(DatasetLoader):
         raise FileNotFoundError(f"Dataset path not found: {path}")
 
     def clean_dataset(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.rename(columns=CICIDS2017_TO_INTERNAL)
         df = super().clean_dataset(df)
 
         if self.binary_classification:
@@ -77,3 +81,31 @@ class CICIDS2017Loader(DatasetLoader):
             df[self.label_column] = df[self.label_column].apply(to_binary)
 
         return df
+
+    def split_features_labels(
+        self,
+        df: pd.DataFrame,
+    ) -> tuple[pd.DataFrame, np.ndarray]:
+        missing_features = [
+            feature for feature in FEATURE_COLUMNS if feature not in df.columns
+        ]
+        if missing_features:
+            raise ValueError(
+                "Missing canonical CICIDS2017 feature columns: "
+                + ", ".join(missing_features)
+            )
+
+        features = df.loc[:, FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce")
+        if features.isna().any().any():
+            invalid_features = [
+                column for column in FEATURE_COLUMNS if features[column].isna().any()
+            ]
+            raise ValueError(
+                "Canonical CICIDS2017 features contain non-numeric values: "
+                + ", ".join(invalid_features)
+            )
+
+        labels = self.label_encoder.fit_transform(df[self.label_column].astype(str))
+        self.feature_columns = list(FEATURE_COLUMNS)
+
+        return features, labels

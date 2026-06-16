@@ -4,7 +4,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $scriptDir
 $backendCompose = Join-Path $root "backend\docker-compose.yml"
 
 function Stop-ByCommandPattern {

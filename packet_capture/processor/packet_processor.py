@@ -10,6 +10,7 @@ from threat_detection.heuristic import HeuristicDetector
 from ml.runtime.live_predictor import LivePredictor
 from ml.runtime.completed_flow_predictor import CompletedFlowPredictor
 from response_engine.auto_blocker import AutoBlocker
+from response_engine.processed_command_store import ProcessedCommandStore
 from response_engine.policy import ResponsePolicy
 from packet_capture.forwarding.contracts import build_ids_event_payload, build_session_upsert_payload
 from packet_capture.utils.logger import IDSLogger, log_event
@@ -22,6 +23,7 @@ class PacketProcessor:
         event_publisher=None,
         session_update_publisher=None,
         block_event_publisher=None,
+        telemetry_collector=None,
     ):
         self.heuristic_detector = HeuristicDetector()
         self.session_builder = SessionBuilder()
@@ -36,11 +38,12 @@ class PacketProcessor:
         self.event_publisher = event_publisher
         self.session_update_publisher = session_update_publisher
         self.block_event_publisher = block_event_publisher
+        self.telemetry_collector = telemetry_collector
         self.alert_confidence_threshold = 0.80
         self.auto_blocker = AutoBlocker()
         self.response_policy = ResponsePolicy()
         self._session_alert_state = {}
-        self._processed_command_ids = set()
+        self.processed_command_store = ProcessedCommandStore()
         self.logger = IDSLogger.get_logger("packet.processor")
         self._log_startup_status()
 
@@ -53,7 +56,7 @@ class PacketProcessor:
         if not action or not ip_address:
             return False, "invalid_command"
 
-        if command_id and command_id in self._processed_command_ids:
+        if command_id and self.processed_command_store.contains(command_id):
             return True, "duplicate_command"
 
         if action == "block":
@@ -71,7 +74,7 @@ class PacketProcessor:
             return False, "unsupported_action"
 
         if ok and command_id:
-            self._processed_command_ids.add(command_id)
+            self.processed_command_store.add(command_id)
 
         if ok:
             mapped_action = "blocked"
@@ -112,9 +115,11 @@ class PacketProcessor:
                 "live_model_enabled": self.live_predictor.enabled,
                 "live_model_path": str(self.live_predictor.model_path),
                 "live_encoder_path": str(self.live_predictor.encoder_path),
+                "live_model_error": self.live_predictor.artifact_error,
                 "completed_model_enabled": self.completed_flow_predictor.enabled,
                 "completed_model_path": str(self.completed_flow_predictor.model_path),
                 "completed_encoder_path": str(self.completed_flow_predictor.encoder_path),
+                "completed_model_error": self.completed_flow_predictor.artifact_error,
                 "alert_publisher_enabled": callable(self.alert_publisher),
                 "event_publisher_enabled": callable(self.event_publisher),
                 "session_update_publisher_enabled": callable(self.session_update_publisher),
@@ -129,6 +134,9 @@ class PacketProcessor:
         )
 
     def process(self, packet):
+        if self.telemetry_collector is not None:
+            self.telemetry_collector.record_packet_processed()
+
         self.auto_blocker.expire_blocks()
 
         if self.auto_blocker.is_currently_blocked(packet.src_ip):
@@ -274,7 +282,13 @@ class PacketProcessor:
             features = self.feature_extractor.extract(session)
             self.feature_store.add(features)
 
+            prediction_started = time.perf_counter()
             prediction = self.live_predictor.predict(features)
+            prediction_duration = time.perf_counter() - prediction_started
+            if self.telemetry_collector is not None and prediction is not None:
+                self.telemetry_collector.record_ml_prediction(
+                    duration_seconds=prediction_duration
+                )
             self._publish_session_update(
                 session_key=session_key,
                 session=session,
@@ -490,7 +504,13 @@ class PacketProcessor:
         final_session = finalized["session"]
         final_key = finalized["session_key"]
         final_features = self.feature_extractor.extract(final_session)
+        prediction_started = time.perf_counter()
         final_prediction = self.completed_flow_predictor.predict(final_features)
+        prediction_duration = time.perf_counter() - prediction_started
+        if self.telemetry_collector is not None and final_prediction is not None:
+            self.telemetry_collector.record_ml_prediction(
+                duration_seconds=prediction_duration
+            )
 
         self._publish_session_update(
             session_key=final_key,

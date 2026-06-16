@@ -90,7 +90,9 @@ class DatasetLoader:
         constant_columns = [
             col
             for col in df.columns
-            if col != self.label_column and df[col].nunique() <= 1
+            if col != self.label_column
+            and col not in self.feature_columns
+            and df[col].nunique() <= 1
         ]
 
         if constant_columns:

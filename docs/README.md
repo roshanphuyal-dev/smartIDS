@@ -30,8 +30,12 @@ smartIDS is a smart intrusion detection system built with Python and modern web 
 
 ## Components
 
-- `python/` - Core detection engine and ML pipeline
-- `backend/` - FastAPI service and PostgreSQL integration
+- `packet_capture/` - Scapy capture, parsing, runtime processor, and backend forwarding
+- `traffic_engine/` - Session and flow tracking
+- `feature_engine/` - Runtime feature extraction and safe statistics
+- `ml/` - Feature schema, CICIDS2017 preparation, training, evaluation, and model artifacts
+- `response_engine/` - Reactive mitigation and firewall abstraction
+- `backend/` - FastAPI service, PostgreSQL integration, auth, realtime, and control APIs
 - `frontend/` - Next.js dashboard for monitoring
 
 ## Getting Started
@@ -41,6 +45,44 @@ smartIDS is a smart intrusion detection system built with Python and modern web 
 3. Start the FastAPI server.
 4. Run the Python detection service.
 5. Launch the Next.js frontend.
+
+## CICIDS2017 Dataset Preparation
+
+Prepare canonical train/test files only from a verified raw CICIDS2017 CSV export that contains every field in `ml/features/schema.py`:
+
+```powershell
+.\.venv_windows\Scripts\python.exe -m ml.datasets.prepare_cicids2017 `
+  --source C:\path\to\raw-cicids2017 `
+  --output-dir ml\data
+```
+
+The source may be one CSV or a directory of CSV files. The command validates all canonical fields before writing, creates a seeded stratified split, and records hashes, row counts, feature order, and label distributions in `ml/data/cicids2017_dataset_metadata.json`.
+
+Existing outputs require `--force`. The current bundled CSVs are not valid preparation sources because they lack `protocol`, `syn_flag_count`, `rst_flag_count`, and `urg_flag_count`.
+
+### Train, Verify, And Activate The Model
+
+After dataset preparation succeeds, run the complete model build:
+
+```powershell
+.\.venv_windows\Scripts\python.exe -m ml.training.build_cicids2017_model
+```
+
+This command validates dataset hashes and schema, trains in a temporary staging directory, evaluates the model, verifies the staged files through the runtime artifact loader, runs a sample prediction, writes a model manifest and sample input/output, and only then replaces `ml/saved_models`.
+
+If any step fails, the existing active model directory remains unchanged. Stop the IDS runtime before activation on Windows so open model files do not block the directory swap.
+
+Checked-in contract examples:
+
+- `ml/contracts/cicids2017_training_row.example.json`
+- `ml/contracts/live_prediction_input.example.json`
+- `ml/contracts/live_prediction_output.example.json`
+
+Each successful build also writes artifact-specific examples:
+
+- `ml/saved_models/live_compatible_sample_input.json`
+- `ml/saved_models/live_compatible_sample_output.json`
+- `ml/saved_models/live_compatible_model_manifest.json`
 
 ## What It Provides
 
@@ -105,6 +147,10 @@ Both modes should share the same core services (alerts, policies, ML event handl
 
 Create an `enterprise_roadmap.md` with 2-week milestones mapped to exact files/modules in this repository.
 
+### Linux Lab Plan
+
+Use `docs/LINUX_TEST_LAB.md` for the isolated disposable-VM validation workflow.
+
 ## License
 
-Distributed under the MIT License.  
+Distributed under the MIT License.

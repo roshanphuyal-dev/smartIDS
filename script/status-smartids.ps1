@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$root = Split-Path -Parent $scriptDir
 $runtimeStatePath = Join-Path $root ".smartids-runtime.env"
 
 function Find-ByCommandPattern {
@@ -47,7 +48,7 @@ Show-ProcessStatus -Label "IDS runtime" -Pattern "-m\s+packet_capture\.main"
 Write-Host ""
 Write-Host "Port status"
 Write-Host "-----------"
-foreach ($port in @(3000, 3100, 6379, 8080)) {
+foreach ($port in @(3000, 3001, 3100, 6379, 8080)) {
     $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($conn) {
         Write-Host ("port {0,-5}: listening" -f $port)

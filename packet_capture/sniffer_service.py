@@ -12,6 +12,8 @@ from packet_capture.forwarding.fastapi_alert_forwarder import FastAPIAlertForwar
 from packet_capture.forwarding.fastapi_block_event_forwarder import FastAPIBlockEventForwarder
 from packet_capture.forwarding.fastapi_ids_event_forwarder import FastAPIIDSEventForwarder
 from packet_capture.forwarding.fastapi_session_update_forwarder import FastAPISessionUpdateForwarder
+from packet_capture.forwarding.fastapi_engine_telemetry_forwarder import FastAPIEngineTelemetryForwarder
+from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
 from response_engine.backend_command_poller import BackendCommandPoller
 
@@ -30,8 +32,10 @@ class SnifferService:
         fastapi_ids_event_endpoint = os.getenv("SMARTIDS_IDS_EVENT_ENDPOINT", "").strip()
         fastapi_session_update_endpoint = os.getenv("SMARTIDS_SESSION_UPDATE_ENDPOINT", "").strip()
         fastapi_block_event_endpoint = os.getenv("SMARTIDS_BLOCK_EVENT_ENDPOINT", "").strip()
+        fastapi_engine_telemetry_endpoint = os.getenv("SMARTIDS_ENGINE_TELEMETRY_ENDPOINT", "").strip()
         backend_commands_endpoint = os.getenv("SMARTIDS_COMMANDS_ENDPOINT", "").strip()
         backend_commands_ack_endpoint = os.getenv("SMARTIDS_COMMANDS_ACK_ENDPOINT", "").strip()
+        internal_service_token = os.getenv("SMARTIDS_INTERNAL_SERVICE_TOKEN", "").strip()
         backend_commands_poll_interval_seconds = float(
             os.getenv("SMARTIDS_COMMANDS_POLL_INTERVAL_SECONDS", "1.5")
         )
@@ -39,12 +43,27 @@ class SnifferService:
         self.fastapi_ids_event_endpoint = fastapi_ids_event_endpoint
         self.fastapi_session_update_endpoint = fastapi_session_update_endpoint
         self.fastapi_block_event_endpoint = fastapi_block_event_endpoint
+        self.fastapi_engine_telemetry_endpoint = fastapi_engine_telemetry_endpoint
         self.backend_commands_endpoint = backend_commands_endpoint
         self.backend_commands_ack_endpoint = backend_commands_ack_endpoint
         self.backend_commands_poll_interval_seconds = max(0.5, backend_commands_poll_interval_seconds)
         self.backend_command_poller = None
+        self.telemetry_collector = EngineTelemetryCollector()
+        self.telemetry_forwarder = None
+        self.telemetry_interval_seconds = max(
+            5.0,
+            float(os.getenv("SMARTIDS_ENGINE_TELEMETRY_INTERVAL_SECONDS", "30")),
+        )
+        if fastapi_engine_telemetry_endpoint:
+            self.telemetry_forwarder = FastAPIEngineTelemetryForwarder(
+                endpoint_url=fastapi_engine_telemetry_endpoint,
+                internal_service_token=internal_service_token,
+            )
         if backend_commands_endpoint:
-            self.backend_command_poller = BackendCommandPoller(endpoint_url=backend_commands_endpoint)
+            self.backend_command_poller = BackendCommandPoller(
+                endpoint_url=backend_commands_endpoint,
+                internal_service_token=internal_service_token,
+            )
         if processor is not None:
             self.processor = processor
         else:
@@ -54,22 +73,30 @@ class SnifferService:
             block_event_publisher = None
 
             if fastapi_alert_endpoint:
-                alert_forwarder = FastAPIAlertForwarder(endpoint_url=fastapi_alert_endpoint)
+                alert_forwarder = FastAPIAlertForwarder(
+                    endpoint_url=fastapi_alert_endpoint,
+                    internal_service_token=internal_service_token,
+                )
                 alert_publisher = alert_forwarder.publish_alert
 
             if fastapi_ids_event_endpoint:
-                event_forwarder = FastAPIIDSEventForwarder(endpoint_url=fastapi_ids_event_endpoint)
+                event_forwarder = FastAPIIDSEventForwarder(
+                    endpoint_url=fastapi_ids_event_endpoint,
+                    internal_service_token=internal_service_token,
+                )
                 event_publisher = event_forwarder.publish_event
 
             if fastapi_session_update_endpoint:
                 session_update_forwarder = FastAPISessionUpdateForwarder(
-                    endpoint_url=fastapi_session_update_endpoint
+                    endpoint_url=fastapi_session_update_endpoint,
+                    internal_service_token=internal_service_token,
                 )
                 session_update_publisher = session_update_forwarder.publish_session_update
 
             if fastapi_block_event_endpoint:
                 block_event_forwarder = FastAPIBlockEventForwarder(
-                    endpoint_url=fastapi_block_event_endpoint
+                    endpoint_url=fastapi_block_event_endpoint,
+                    internal_service_token=internal_service_token,
                 )
                 block_event_publisher = block_event_forwarder.publish_block_event
 
@@ -78,10 +105,14 @@ class SnifferService:
                 event_publisher=event_publisher,
                 session_update_publisher=session_update_publisher,
                 block_event_publisher=block_event_publisher,
+                telemetry_collector=self.telemetry_collector,
             )
 
         self.sniffer = LiveSniffer(
-            self.packet_queue, self.interface, self.packet_filter
+            self.packet_queue,
+            self.interface,
+            self.packet_filter,
+            telemetry_collector=self.telemetry_collector,
         )
 
     def _load_project_env(self):
@@ -113,6 +144,13 @@ class SnifferService:
             )
             command_thread.start()
 
+        if self.telemetry_forwarder is not None:
+            telemetry_thread = threading.Thread(
+                target=self._publish_engine_telemetry,
+                daemon=True,
+            )
+            telemetry_thread.start()
+
         log_event(
             self.logger,
             "info",
@@ -130,6 +168,9 @@ class SnifferService:
                 "session_update_forwarding_endpoint": self.fastapi_session_update_endpoint,
                 "block_event_forwarding_enabled": bool(self.fastapi_block_event_endpoint),
                 "block_event_forwarding_endpoint": self.fastapi_block_event_endpoint,
+                "engine_telemetry_forwarding_enabled": bool(self.fastapi_engine_telemetry_endpoint),
+                "engine_telemetry_forwarding_endpoint": self.fastapi_engine_telemetry_endpoint,
+                "engine_telemetry_interval_seconds": self.telemetry_interval_seconds,
                 "backend_commands_enabled": bool(self.backend_commands_endpoint),
                 "backend_commands_endpoint": self.backend_commands_endpoint,
                 "backend_commands_poll_interval_seconds": self.backend_commands_poll_interval_seconds,
@@ -142,6 +183,38 @@ class SnifferService:
         while True:
             packet = self.packet_queue.get()
             self.processor.process(packet)
+
+    def _publish_engine_telemetry(self):
+        while True:
+            snapshot = self.telemetry_collector.snapshot(
+                packet_queue=self.packet_queue,
+                session_builder=self.processor.session_builder,
+            )
+            ok = self.telemetry_forwarder.publish_telemetry(snapshot)
+            if not ok:
+                log_event(
+                    self.logger,
+                    "warning",
+                    "engine telemetry forwarding failed",
+                    {
+                        "event_type": "engine_telemetry_forward_failed",
+                        "packets_dropped_total": snapshot.get("packets_dropped_total", 0),
+                        "packet_queue_size": snapshot.get("packet_queue_size", 0),
+                    },
+                )
+            elif snapshot.get("packet_loss_detected"):
+                log_event(
+                    self.logger,
+                    "warning",
+                    "engine telemetry reports packet loss",
+                    {
+                        "event_type": "engine_packet_loss_detected",
+                        "packets_dropped_total": snapshot.get("packets_dropped_total", 0),
+                        "packet_queue_size": snapshot.get("packet_queue_size", 0),
+                        "packet_queue_maxsize": snapshot.get("packet_queue_maxsize", 0),
+                    },
+                )
+            time.sleep(self.telemetry_interval_seconds)
 
     def _poll_backend_commands(self):
         while True:

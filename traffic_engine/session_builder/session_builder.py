@@ -70,10 +70,17 @@ class SessionBuilder:
 
         end_trigger = session.is_finished()
 
+        minimum_ready = age_trigger and packet_trigger
+        first_ready_prediction = (
+            minimum_ready and state["last_prediction_packet_count"] == 0
+        )
+        periodic_prediction = (
+            minimum_ready and (periodic_packet_trigger or periodic_time_trigger)
+        )
+
         should_predict_now = (
-            (age_trigger and packet_trigger)
-            or periodic_packet_trigger
-            or periodic_time_trigger
+            first_ready_prediction
+            or periodic_prediction
             or end_trigger
         )
 
