@@ -2,24 +2,24 @@
 
 ## Current Priority Order
 
-1. Merge frontend and backend persistence onto one database and move shared database artifacts under `/database`.
+1. Stabilize the backend-owned database architecture under `backend/app/db` and `backend/migrations`.
 2. Build an isolated Linux test-lab plan for safe validation against a deliberately vulnerable VM.
 3. Revamp the frontend around raw IDS event inspection and clearer live data display.
 4. Add the custom decision tree model after the database and lab phases are verified.
 
-## Phase 1: Single Database Consolidation
+## Phase 1: Backend-Owned Database Consolidation
 
 Goal: remove the split frontend/backend database setup and make backend the only database writer.
 
 Scope:
-- Move schema, migrations, seeds, and database utilities into `/database`.
+- Keep canonical schema, migrations, sessions, and backend DB utilities under `backend/`.
 - Keep the frontend read-only and API-driven.
-- Preserve current behavior while consolidating storage paths.
-- Verify all DB-dependent flows after the move.
+- Preserve current behavior while retiring the temporary root `database/` workspace.
+- Verify all DB-dependent flows after the cleanup.
 
 Acceptance:
 - One canonical database configuration.
-- One shared source of truth for schema and migrations.
+- One backend-owned source of truth for schema and migrations.
 - Frontend does not write directly to the database.
 
 ## Phase 2: Linux Test Lab Plan

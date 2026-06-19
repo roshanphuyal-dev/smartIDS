@@ -4,6 +4,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Test-IsAdministrator {
+    $currentIdentity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($currentIdentity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-IsAdministrator)) {
+    throw "SmartIDS stop requires an Administrator PowerShell session on Windows."
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent $scriptDir
 $backendCompose = Join-Path $root "backend\docker-compose.yml"

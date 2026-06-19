@@ -40,7 +40,7 @@ The sniff callback is intentionally tiny: parse packet data, update lightweight 
 - `ml/` - Canonical feature schema, CICIDS2017 mapping/validation, training, evaluation, runtime model loading.
 - `response_engine/` - Firewall adapters, response policy, block/watchlist state, durable processed-command dedupe.
 - `backend/` - FastAPI API, auth, persistence, realtime WebSocket channels, migrations, smoke checks.
-- `database/` - Canonical shared database notes and backend DB barrel.
+- `backend/app/db/` and `backend/migrations/` - Canonical backend-owned database modules and Alembic migrations.
 - `frontend/` - Next.js/Bun dashboard.
 - `script/` - Windows helper scripts for starting, stopping, checking, and smoke-feeding SmartIDS.
 - `tests/` - Unit and integration tests for backend, ML, packet runtime, and contracts.
@@ -95,7 +95,6 @@ Create them from examples:
 
 ```powershell
 Copy-Item .\backend\.env.example .\backend\.env
-Copy-Item .\database\.env.example .\database\.env
 if (-not (Test-Path .\.env)) { New-Item -ItemType File .\.env | Out-Null }
 ```
 
@@ -103,7 +102,6 @@ if (-not (Test-Path .\.env)) { New-Item -ItemType File .\.env | Out-Null }
 
 ```bash
 cp backend/.env.example backend/.env
-cp database/.env.example database/.env
 touch .env
 ```
 
@@ -116,12 +114,12 @@ Important service-token rule:
 Minimum local root `.env` for IDS runtime forwarding:
 
 ```env
-SMARTIDS_IDS_EVENT_ENDPOINT=http://127.0.0.1:3000/api/v1/ids-events
-SMARTIDS_SESSION_UPDATE_ENDPOINT=http://127.0.0.1:3000/api/v1/sessions/upsert
-SMARTIDS_BLOCK_EVENT_ENDPOINT=http://127.0.0.1:3000/api/v1/block-events/upsert
-SMARTIDS_ENGINE_TELEMETRY_ENDPOINT=http://127.0.0.1:3000/api/v1/engine-telemetry
-SMARTIDS_COMMANDS_ENDPOINT=http://127.0.0.1:3000/api/v1/engine-commands
-SMARTIDS_COMMANDS_ACK_ENDPOINT=http://127.0.0.1:3000/api/v1/engine-commands/ack
+SMARTIDS_IDS_EVENT_ENDPOINT=http://127.0.0.1:3100/api/v1/ids-events
+SMARTIDS_SESSION_UPDATE_ENDPOINT=http://127.0.0.1:3100/api/v1/sessions/upsert
+SMARTIDS_BLOCK_EVENT_ENDPOINT=http://127.0.0.1:3100/api/v1/block-events/upsert
+SMARTIDS_ENGINE_TELEMETRY_ENDPOINT=http://127.0.0.1:3100/api/v1/engine-telemetry
+SMARTIDS_COMMANDS_ENDPOINT=http://127.0.0.1:3100/api/v1/engine-commands
+SMARTIDS_COMMANDS_ACK_ENDPOINT=http://127.0.0.1:3100/api/v1/engine-commands/ack
 SMARTIDS_COMMANDS_POLL_INTERVAL_SECONDS=1.5
 SMARTIDS_ENGINE_TELEMETRY_INTERVAL_SECONDS=30
 SMARTIDS_INTERNAL_SERVICE_TOKEN=replace-with-the-same-value-as-backend-internal-token
@@ -136,19 +134,25 @@ SMARTIDS_PROCESSED_COMMAND_MAX_IDS=10000
 
 ### Windows
 
-```powershell
-py -3.12 -m venv .venv_windows
-.\.venv_windows\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r .\config\requirements_windows.txt
-pip install -r .\backend\requirements.txt
+1. Create and activate the virtual environment.
+   ```powershell
+   py -3.12 -m venv .venv_windows
+   .\.venv_windows\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   ```
+2. Install the backend/runtime Python dependencies.
+   ```powershell
+   pip install -r .\config\requirements_windows.txt
+   pip install -r .\backend\requirements.txt
+   ```
+3. Install the frontend dependencies.
+   ```powershell
+   Set-Location .\frontend
+   bun install
+   Set-Location ..
+   ```
 
-Set-Location .\frontend
-bun install
-Set-Location ..
-```
-
-If PowerShell blocks activation:
+If PowerShell blocks activation, run:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
@@ -156,17 +160,23 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 
 ### Linux
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r config/requirements.txt
-pip install -r backend/requirements.txt
-
-cd frontend
-bun install
-cd ..
-```
+1. Create and activate the virtual environment.
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python -m pip install --upgrade pip
+   ```
+2. Install the backend/runtime Python dependencies.
+   ```bash
+   pip install -r config/requirements.txt
+   pip install -r backend/requirements.txt
+   ```
+3. Install the frontend dependencies.
+   ```bash
+   cd frontend
+   bun install
+   cd ..
+   ```
 
 ## Start Infrastructure
 
@@ -207,16 +217,16 @@ Use separate terminals for backend API, worker, frontend, and IDS runtime.
 Windows:
 
 ```powershell
-.\.venv_windows\Scripts\python.exe .\backend\script.py start --port 3000
+.\.venv_windows\Scripts\python.exe .\backend\script.py start --port 3100
 ```
 
 Linux:
 
 ```bash
-.venv/bin/python backend/script.py start --host 127.0.0.1 --port 3000
+.venv/bin/python backend/script.py start --host 127.0.0.1 --port 3100
 ```
 
-Backend URL: `http://127.0.0.1:3000`
+Backend URL: `http://127.0.0.1:3100`
 
 ### 2. Backend Worker
 
@@ -238,17 +248,17 @@ Windows and Linux:
 
 ```bash
 cd frontend
-bun run dev -- --port 3001
+bun run dev -- --port 3000
 ```
 
-Open `http://127.0.0.1:3001`.
+Open `http://127.0.0.1:3000`.
 
 If you want the frontend to point at a non-default backend, set:
 
 ```bash
-NEXT_PUBLIC_IDS_REST_BASE_URL=http://127.0.0.1:3000/api/v1
-IDS_REST_BASE_URL=http://127.0.0.1:3000/api/v1
-NEXT_PUBLIC_IDS_WS_URL=ws://127.0.0.1:3000/api/v1/realtime/ws
+NEXT_PUBLIC_IDS_REST_BASE_URL=http://127.0.0.1:3100/api/v1
+IDS_REST_BASE_URL=http://127.0.0.1:3100/api/v1
+NEXT_PUBLIC_IDS_WS_URL=ws://127.0.0.1:3100/api/v1/realtime/ws
 ```
 
 ### 4. IDS Runtime
@@ -267,20 +277,23 @@ sudo .venv/bin/python -m packet_capture.main
 
 The IDS runtime is passive capture plus reactive mitigation. Test live capture/blocking only on networks and hosts you own or have explicit permission to monitor.
 
-## Windows One-Command Helper
+## Service Helpers
 
-The PowerShell helpers start or stop the local stack for development.
+### Windows
+
+The PowerShell helpers start or stop the local stack for development. Use an
+Administrator PowerShell session.
 
 Start:
 
 ```powershell
-.\script\start-smartids.ps1 -BaseUrl http://127.0.0.1:3000
+.\script\start-ids.ps1
 ```
 
 Start with hidden helper windows:
 
 ```powershell
-.\script\start-smartids.ps1 -BaseUrl http://127.0.0.1:3000 -HideWindows
+.\script\start-ids.ps1 -HideWindows
 ```
 
 Status:
@@ -289,22 +302,57 @@ Status:
 .\script\status-smartids.ps1
 ```
 
+Launcher smoke checks live under one removable folder:
+
+```powershell
+.\script\smoke\smoke-start-smartids-structure.ps1
+```
+
 Feed smoke payloads into a running backend:
 
 ```powershell
-.\script\feed-smartids-testdata.ps1 -BaseUrl http://127.0.0.1:3000
+.\script\feed-smartids-testdata.ps1 -BaseUrl http://127.0.0.1:3100
 ```
 
 Stop app processes:
 
 ```powershell
-.\script\stop-smartids.ps1
+.\script\stop-ids.ps1
 ```
 
 Stop app processes and Docker infra:
 
 ```powershell
-.\script\stop-smartids.ps1 -StopDocker
+.\script\stop-ids.ps1 -StopDocker
+```
+
+### Linux
+
+The Bash helpers prompt for `sudo` when they need elevated access for Docker
+and the packet-capture runtime.
+
+Start:
+
+```bash
+./script/start-ids.sh
+```
+
+Start with a custom backend URL:
+
+```bash
+./script/start-ids.sh --base-url http://127.0.0.1:3100
+```
+
+Stop app processes:
+
+```bash
+./script/stop-ids.sh
+```
+
+Stop app processes and Docker infra:
+
+```bash
+./script/stop-ids.sh --stop-docker
 ```
 
 ## Backend Smoke Checks
@@ -314,21 +362,21 @@ Run after backend API is up.
 Windows:
 
 ```powershell
-.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_unified_reporting.py --base-url http://127.0.0.1:3000
-.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_engine_commands.py --base-url http://127.0.0.1:3000
-.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_engine_telemetry.py --base-url http://127.0.0.1:3000
-.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_sessions.py --base-url http://127.0.0.1:3000
-.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_response_actions.py --base-url http://127.0.0.1:3000
+.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_unified_reporting.py --base-url http://127.0.0.1:3100
+.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_engine_commands.py --base-url http://127.0.0.1:3100
+.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_engine_telemetry.py --base-url http://127.0.0.1:3100
+.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_sessions.py --base-url http://127.0.0.1:3100
+.\.venv_windows\Scripts\python.exe .\backend\smoke\api_smoke_response_actions.py --base-url http://127.0.0.1:3100
 ```
 
 Linux:
 
 ```bash
-.venv/bin/python backend/smoke/api_smoke_unified_reporting.py --base-url http://127.0.0.1:3000
-.venv/bin/python backend/smoke/api_smoke_engine_commands.py --base-url http://127.0.0.1:3000
-.venv/bin/python backend/smoke/api_smoke_engine_telemetry.py --base-url http://127.0.0.1:3000
-.venv/bin/python backend/smoke/api_smoke_sessions.py --base-url http://127.0.0.1:3000
-.venv/bin/python backend/smoke/api_smoke_response_actions.py --base-url http://127.0.0.1:3000
+.venv/bin/python backend/smoke/api_smoke_unified_reporting.py --base-url http://127.0.0.1:3100
+.venv/bin/python backend/smoke/api_smoke_engine_commands.py --base-url http://127.0.0.1:3100
+.venv/bin/python backend/smoke/api_smoke_engine_telemetry.py --base-url http://127.0.0.1:3100
+.venv/bin/python backend/smoke/api_smoke_sessions.py --base-url http://127.0.0.1:3100
+.venv/bin/python backend/smoke/api_smoke_response_actions.py --base-url http://127.0.0.1:3100
 ```
 
 Service-level checks that do not require HTTP:

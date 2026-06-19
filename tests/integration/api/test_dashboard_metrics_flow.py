@@ -71,6 +71,9 @@ class FakeRealtimeService:
     async def broadcast_session_update(self, payload) -> None:
         self.messages.append(payload)
 
+    async def broadcast_traffic_update(self, payload) -> None:
+        self.messages.append(payload)
+
     async def broadcast_blocked_ip_update(self, payload) -> None:
         self.messages.append(payload)
 

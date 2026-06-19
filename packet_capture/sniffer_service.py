@@ -13,6 +13,7 @@ from packet_capture.forwarding.fastapi_block_event_forwarder import FastAPIBlock
 from packet_capture.forwarding.fastapi_ids_event_forwarder import FastAPIIDSEventForwarder
 from packet_capture.forwarding.fastapi_session_update_forwarder import FastAPISessionUpdateForwarder
 from packet_capture.forwarding.fastapi_engine_telemetry_forwarder import FastAPIEngineTelemetryForwarder
+from packet_capture.forwarding.background_publisher import BackgroundPublisher
 from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
 from response_engine.backend_command_poller import BackendCommandPoller
@@ -24,7 +25,8 @@ class SnifferService:
         self._load_project_env()
         self.logger = IDSLogger.get_logger("sniffer.service")
 
-        self.interface = interface or InterfaceManager.get_default_interface()
+        self.capture_interface_override = os.getenv("SMARTIDS_CAPTURE_INTERFACE", "").strip()
+        self.interface = interface or InterfaceManager.resolve_interface(self.capture_interface_override)
         self.packet_queue = Queue(maxsize=10000)
         self.packet_filter = packet_filter or PacketFilters.basic_filter()
 
@@ -54,6 +56,20 @@ class SnifferService:
             5.0,
             float(os.getenv("SMARTIDS_ENGINE_TELEMETRY_INTERVAL_SECONDS", "30")),
         )
+        self.capture_health_logging_enabled = os.getenv("SMARTIDS_CAPTURE_HEALTH_LOG", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.forwarder_queue_size = max(
+            32,
+            int(os.getenv("SMARTIDS_FORWARDER_QUEUE_SIZE", "1024")),
+        )
+        self.forwarder_drop_log_every = max(
+            1,
+            int(os.getenv("SMARTIDS_FORWARDER_DROP_LOG_EVERY", "25")),
+        )
         if fastapi_engine_telemetry_endpoint:
             self.telemetry_forwarder = FastAPIEngineTelemetryForwarder(
                 endpoint_url=fastapi_engine_telemetry_endpoint,
@@ -77,28 +93,40 @@ class SnifferService:
                     endpoint_url=fastapi_alert_endpoint,
                     internal_service_token=internal_service_token,
                 )
-                alert_publisher = alert_forwarder.publish_alert
+                alert_publisher = self._build_background_publisher(
+                    name="alerts",
+                    publish=alert_forwarder.publish_alert,
+                )
 
             if fastapi_ids_event_endpoint:
                 event_forwarder = FastAPIIDSEventForwarder(
                     endpoint_url=fastapi_ids_event_endpoint,
                     internal_service_token=internal_service_token,
                 )
-                event_publisher = event_forwarder.publish_event
+                event_publisher = self._build_background_publisher(
+                    name="ids-events",
+                    publish=event_forwarder.publish_event,
+                )
 
             if fastapi_session_update_endpoint:
                 session_update_forwarder = FastAPISessionUpdateForwarder(
                     endpoint_url=fastapi_session_update_endpoint,
                     internal_service_token=internal_service_token,
                 )
-                session_update_publisher = session_update_forwarder.publish_session_update
+                session_update_publisher = self._build_background_publisher(
+                    name="session-updates",
+                    publish=session_update_forwarder.publish_session_update,
+                )
 
             if fastapi_block_event_endpoint:
                 block_event_forwarder = FastAPIBlockEventForwarder(
                     endpoint_url=fastapi_block_event_endpoint,
                     internal_service_token=internal_service_token,
                 )
-                block_event_publisher = block_event_forwarder.publish_block_event
+                block_event_publisher = self._build_background_publisher(
+                    name="block-events",
+                    publish=block_event_forwarder.publish_block_event,
+                )
 
             self.processor = PacketProcessor(
                 alert_publisher=alert_publisher,
@@ -158,6 +186,7 @@ class SnifferService:
             {
                 "event_type": "service_start",
                 "interface": self.interface,
+                "capture_interface_override": self.capture_interface_override or None,
                 "packet_filter": self.packet_filter,
                 "packet_queue_maxsize": self.packet_queue.maxsize,
                 "forwarding_enabled": bool(self.fastapi_alert_endpoint),
@@ -171,6 +200,9 @@ class SnifferService:
                 "engine_telemetry_forwarding_enabled": bool(self.fastapi_engine_telemetry_endpoint),
                 "engine_telemetry_forwarding_endpoint": self.fastapi_engine_telemetry_endpoint,
                 "engine_telemetry_interval_seconds": self.telemetry_interval_seconds,
+                "forwarder_queue_size": self.forwarder_queue_size,
+                "forwarder_drop_log_every": self.forwarder_drop_log_every,
+                "capture_health_logging_enabled": self.capture_health_logging_enabled,
                 "backend_commands_enabled": bool(self.backend_commands_endpoint),
                 "backend_commands_endpoint": self.backend_commands_endpoint,
                 "backend_commands_poll_interval_seconds": self.backend_commands_poll_interval_seconds,
@@ -230,3 +262,12 @@ class SnifferService:
                             status=status if ok else f"error:{status}",
                         )
             time.sleep(self.backend_commands_poll_interval_seconds)
+
+    def _build_background_publisher(self, *, name: str, publish):
+        dispatcher = BackgroundPublisher(
+            name=name,
+            publish=publish,
+            max_queue_size=self.forwarder_queue_size,
+            drop_log_every=self.forwarder_drop_log_every,
+        )
+        return dispatcher.submit

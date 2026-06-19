@@ -29,5 +29,5 @@ class FastAPIEngineTelemetryForwarder:
         try:
             with request.urlopen(req, timeout=self.timeout_seconds) as response:
                 return 200 <= int(response.status) < 300
-        except (error.URLError, TimeoutError, ValueError):
+        except (error.URLError, TimeoutError, ValueError, OSError):
             return False

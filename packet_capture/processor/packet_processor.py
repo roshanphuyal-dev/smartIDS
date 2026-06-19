@@ -134,9 +134,6 @@ class PacketProcessor:
         )
 
     def process(self, packet):
-        if self.telemetry_collector is not None:
-            self.telemetry_collector.record_packet_processed()
-
         self.auto_blocker.expire_blocks()
 
         if self.auto_blocker.is_currently_blocked(packet.src_ip):
@@ -273,12 +270,25 @@ class PacketProcessor:
 
         session_key = SessionKey.from_packet(packet)
         session = self.session_builder.process_packet(packet)
+        if session.packet_count == 1:
+            self._log_session_snapshot(
+                stage="started",
+                session_key=session_key,
+                session=session,
+                reason="new_session",
+            )
 
         expired_finalized = self.session_builder.drain_finalized_sessions()
         for finalized in expired_finalized:
             self._process_finalized_session(finalized, heuristic_decision)
 
         if self.session_builder.should_predict(packet):
+            self._log_session_snapshot(
+                stage="active",
+                session_key=session_key,
+                session=session,
+                reason="prediction_trigger",
+            )
             features = self.feature_extractor.extract(session)
             self.feature_store.add(features)
 
@@ -376,6 +386,9 @@ class PacketProcessor:
         finalized = self.session_builder.finalize_session_if_needed(packet)
         if finalized is not None:
             self._process_finalized_session(finalized, heuristic_decision)
+
+        if self.telemetry_collector is not None:
+            self.telemetry_collector.record_packet_processed()
 
     def _should_alert(self, prediction: dict) -> bool:
         if prediction["label"] == "Normal Traffic":
@@ -503,6 +516,12 @@ class PacketProcessor:
     def _process_finalized_session(self, finalized: dict, heuristic_decision):
         final_session = finalized["session"]
         final_key = finalized["session_key"]
+        self._log_session_snapshot(
+            stage="finalized",
+            session_key=final_key,
+            session=final_session,
+            reason=finalized["reason"],
+        )
         final_features = self.feature_extractor.extract(final_session)
         prediction_started = time.perf_counter()
         final_prediction = self.completed_flow_predictor.predict(final_features)
@@ -571,6 +590,29 @@ class PacketProcessor:
                 action="blocked" if blocked else "allowed",
                 timestamp=final_session.last_seen,
             )
+
+    def _log_session_snapshot(self, stage: str, session_key: SessionKey, session, reason: str):
+        log_event(
+            self.logger,
+            "info",
+            "session lifecycle snapshot",
+            {
+                "event_type": "session_lifecycle",
+                "stage": stage,
+                "reason": reason,
+                "session_id": self._session_key_str(session_key),
+                "src_ip": session.src_ip,
+                "dst_ip": session.dst_ip,
+                "src_port": session.src_port,
+                "dst_port": session.dst_port,
+                "protocol": session.protocol,
+                "packet_count": session.packet_count,
+                "byte_count": session.total_bytes,
+                "duration_seconds": round(session.duration(), 4),
+                "forward_packet_count": session.fwd_packet_count,
+                "forward_byte_count": session.fwd_total_bytes,
+            },
+        )
 
     def _session_key_str(self, session_key: SessionKey) -> str:
         return (

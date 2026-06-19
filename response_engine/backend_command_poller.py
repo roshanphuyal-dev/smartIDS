@@ -25,7 +25,7 @@ class BackendCommandPoller:
                 if int(response.status) < 200 or int(response.status) >= 300:
                     return []
                 payload = json.loads(response.read().decode("utf-8"))
-        except (error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        except (error.URLError, TimeoutError, ValueError, json.JSONDecodeError, OSError):
             return []
 
         if isinstance(payload, list):
@@ -59,5 +59,5 @@ class BackendCommandPoller:
         try:
             with request.urlopen(req, timeout=self.timeout_seconds) as response:
                 return 200 <= int(response.status) < 300
-        except (error.URLError, TimeoutError, ValueError):
+        except (error.URLError, TimeoutError, ValueError, OSError):
             return False

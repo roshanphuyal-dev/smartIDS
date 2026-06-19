@@ -26,6 +26,7 @@ class EngineTelemetryCollector:
         self._ml_predictions_total = 0
         self._last_ml_prediction_latency_ms = 0.0
         self._packet_received_times: deque[float] = deque()
+        self._packet_dropped_times: deque[float] = deque()
         self._ml_prediction_times: deque[float] = deque()
 
     def record_packet_received(self) -> None:
@@ -40,8 +41,11 @@ class EngineTelemetryCollector:
             self._packets_processed_total += 1
 
     def record_packet_dropped(self) -> None:
+        now = self._clock()
         with self._lock:
             self._packets_dropped_total += 1
+            self._packet_dropped_times.append(now)
+            self._trim(self._packet_dropped_times, now)
 
     def record_ml_prediction(self, *, duration_seconds: float) -> None:
         now = self._clock()
@@ -55,11 +59,13 @@ class EngineTelemetryCollector:
         now = self._clock()
         with self._lock:
             self._trim(self._packet_received_times, now)
+            self._trim(self._packet_dropped_times, now)
             self._trim(self._ml_prediction_times, now)
             packets_received_total = self._packets_received_total
             packets_processed_total = self._packets_processed_total
             packets_dropped_total = self._packets_dropped_total
             packets_received_per_window = len(self._packet_received_times)
+            packets_dropped_per_window = len(self._packet_dropped_times)
             ml_predictions_total = self._ml_predictions_total
             ml_predictions_per_window = len(self._ml_prediction_times)
             last_ml_latency_ms = self._last_ml_prediction_latency_ms
@@ -78,7 +84,7 @@ class EngineTelemetryCollector:
             "packets_processed_total": packets_processed_total,
             "packets_dropped_total": packets_dropped_total,
             "packets_lost_total": packets_dropped_total,
-            "packet_loss_detected": packets_dropped_total > 0,
+            "packet_loss_detected": packets_dropped_per_window > 0,
             "packet_queue_size": queue_size,
             "packet_queue_maxsize": queue_maxsize,
             "packet_queue_usage_percent": queue_usage_percent,
@@ -123,4 +129,3 @@ def _session_exchange(session) -> dict:
         "byte_count": session.total_bytes,
         "duration": round(float(session.duration()), 4),
     }
-

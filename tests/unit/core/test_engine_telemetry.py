@@ -64,6 +64,25 @@ class EngineTelemetryCollectorTest(unittest.TestCase):
         self.assertEqual(snapshot["ml_processing_rate_per_30s"], 0)
         self.assertEqual(snapshot["last_ml_prediction_latency_ms"], 20.0)
 
+    def test_packet_loss_detected_clears_after_drop_window_expires(self) -> None:
+        now = 100.0
+
+        def clock() -> float:
+            return now
+
+        collector = EngineTelemetryCollector(clock=clock, packet_window_seconds=30)
+        collector.record_packet_dropped()
+        now = 131.0
+
+        snapshot = collector.snapshot(
+            packet_queue=Queue(maxsize=10),
+            session_builder=SessionBuilder(),
+        )
+
+        self.assertEqual(snapshot["packets_dropped_total"], 1)
+        self.assertEqual(snapshot["packets_lost_total"], 1)
+        self.assertFalse(snapshot["packet_loss_detected"])
+
     def test_snapshot_reports_active_sessions_and_network_exchanges(self) -> None:
         builder = SessionBuilder()
         collector = EngineTelemetryCollector(clock=lambda: 10.0)
@@ -94,4 +113,3 @@ class EngineTelemetryCollectorTest(unittest.TestCase):
         self.assertEqual(exchange["destination_ip"], "10.0.0.2")
         self.assertEqual(exchange["destination_port"], 443)
         self.assertEqual(exchange["protocol"], ProtocolType.TCP.value)
-

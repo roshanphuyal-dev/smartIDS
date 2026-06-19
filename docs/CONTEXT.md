@@ -219,8 +219,8 @@ feature_engine/   Runtime feature extraction and safe stats helpers
 ml/               Models, dataset loaders, training, evaluation, schema, mappings
 threat_engine/    Threat scoring and alert decisions
 response_engine/  Reactive mitigation and firewall abstraction
-backend/          Future API and websocket layer
-client/           Future dashboard
+backend/          FastAPI API and websocket layer
+frontend/         Next.js dashboard
 tests/            Future automated verification
 ```
 

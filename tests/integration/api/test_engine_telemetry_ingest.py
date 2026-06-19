@@ -5,7 +5,7 @@ import sys
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = ROOT / "backend"
@@ -25,27 +25,33 @@ from fastapi.testclient import TestClient
 
 from app.common.exception_handlers import register_exception_handlers
 from app.core.config import get_settings
+from app.features.engine_telemetry.dependencies import get_engine_telemetry_service
 from app.features.engine_telemetry.router import router
 
 
-class FakeRealtimeService:
-    messages = []
+class FakeEngineTelemetryService:
+    payloads = []
 
-    def __init__(self, _manager) -> None:
-        pass
-
-    async def broadcast_dashboard_metrics(self, payload) -> None:
-        self.messages.append(payload)
+    async def ingest(self, payload):
+        self.payloads.append(payload)
+        return {
+            "accepted": True,
+            "packets_received_total": payload.packets_received_total,
+            "active_sessions": payload.active_sessions,
+            "packet_loss_detected": payload.packet_loss_detected,
+            "packet_queue_size": payload.packet_queue_size,
+        }
 
 
 class EngineTelemetryIngestTest(unittest.TestCase):
     def setUp(self) -> None:
         os.environ["INTERNAL_SERVICE_TOKEN"] = "test-token"
         get_settings.cache_clear()
-        FakeRealtimeService.messages = []
+        FakeEngineTelemetryService.payloads = []
         self.app = FastAPI()
         register_exception_handlers(self.app)
         self.app.include_router(router, prefix="/api/v1")
+        self.app.dependency_overrides[get_engine_telemetry_service] = lambda: FakeEngineTelemetryService()
         self.client = TestClient(self.app)
 
     def test_rejects_anonymous_ingest(self) -> None:
@@ -56,28 +62,24 @@ class EngineTelemetryIngestTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_ingests_and_broadcasts_dashboard_metrics(self) -> None:
-        with patch(
-            "app.features.engine_telemetry.service.RealtimeService",
-            FakeRealtimeService,
-        ):
-            response = self.client.post(
-                "/api/v1/engine-telemetry",
-                json=self._payload(),
-                headers={"x-smartids-internal-token": "test-token"},
-            )
+    def test_ingests_runtime_payload(self) -> None:
+        response = self.client.post(
+            "/api/v1/engine-telemetry",
+            json=self._payload(),
+            headers={"x-smartids-internal-token": "test-token"},
+        )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(FakeRealtimeService.messages), 1)
-        metrics = FakeRealtimeService.messages[0].metrics
-        self.assertEqual(metrics["packets_received_total"], 10)
-        self.assertEqual(metrics["packets_received_per_30s"], 4)
-        self.assertEqual(metrics["active_sessions"], 2)
-        self.assertEqual(metrics["packet_queue_size"], 3)
-        self.assertEqual(metrics["packets_lost_total"], 1)
-        self.assertTrue(metrics["packet_loss_detected"])
-        self.assertEqual(metrics["ml_predictions_per_30s"], 5)
-        self.assertEqual(metrics["active_network_exchanges"][0]["destination_port"], 443)
+        self.assertEqual(len(FakeEngineTelemetryService.payloads), 1)
+        payload = FakeEngineTelemetryService.payloads[0]
+        self.assertEqual(payload.packets_received_total, 10)
+        self.assertEqual(payload.packets_received_per_30s, 4)
+        self.assertEqual(payload.active_sessions, 2)
+        self.assertEqual(payload.packet_queue_size, 3)
+        self.assertEqual(payload.packets_lost_total, 1)
+        self.assertTrue(payload.packet_loss_detected)
+        self.assertEqual(payload.ml_predictions_per_30s, 5)
+        self.assertEqual(payload.active_network_exchanges[0].destination_port, 443)
 
     @staticmethod
     def _payload() -> dict:
