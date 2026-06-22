@@ -74,6 +74,8 @@ dump.rdb
 # ML files
 ml/data/
 ml/saved_models/
+ml/datasets/CIC_IDS_2018/
+ml/datasets/UNSW_NB15_datasets/
 
 # Local runtime state
 .smartids-runtime.env
