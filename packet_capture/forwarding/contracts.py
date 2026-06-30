@@ -29,10 +29,31 @@ def build_ids_event_payload(
 ) -> dict:
     confidence = float(prediction.get("confidence", 0.0))
     label = str(prediction.get("label", "Unknown"))
+    model_key = str(prediction.get("model_key", event_type))
     session_id = _session_id(session_key)
     timestamp = float(session.last_seen)
     event_id = _prediction_event_id(session_id, event_type, label, timestamp)
     action = "allow" if label == "Normal Traffic" else "alert"
+    forwarded_features = {
+        **dict(features),
+        "session_id": session_id,
+        "source_ip": session.src_ip,
+        "destination_ip": session.dst_ip,
+        "source_port": session.src_port,
+        "destination_port": session.dst_port,
+        "session_duration": session.duration(),
+        "session_packet_count": session.packet_count,
+        "session_byte_count": session.total_bytes,
+        "is_final": is_final,
+    }
+
+    model_outputs = prediction.get("model_outputs")
+    if isinstance(model_outputs, dict):
+        forwarded_features["model_outputs"] = model_outputs
+
+    model_stack = prediction.get("model_stack")
+    if isinstance(model_stack, dict):
+        forwarded_features["model_stack"] = model_stack
 
     return {
         "schema_version": "1.0",
@@ -44,7 +65,7 @@ def build_ids_event_payload(
         "source_port": session.src_port,
         "destination_port": session.dst_port,
         "protocol": session.protocol,
-        "model": event_type,
+        "model": model_key,
         "prediction": label,
         "attack_type": label,
         "confidence": confidence,
@@ -59,18 +80,7 @@ def build_ids_event_payload(
         "byte_count": session.total_bytes,
         "flow_duration": round(session.duration(), 4),
         "ml_prediction": label,
-        "features": {
-            **dict(features),
-            "session_id": session_id,
-            "source_ip": session.src_ip,
-            "destination_ip": session.dst_ip,
-            "source_port": session.src_port,
-            "destination_port": session.dst_port,
-            "session_duration": session.duration(),
-            "session_packet_count": session.packet_count,
-            "session_byte_count": session.total_bytes,
-            "is_final": is_final,
-        },
+        "features": forwarded_features,
     }
 
 

@@ -20,7 +20,28 @@ class ForwardingContractsTest(unittest.TestCase):
             total_bytes=12345,
             duration=lambda: 4.5,
         )
-        prediction = {"label": "SQL Injection", "confidence": 0.91}
+        prediction = {
+            "label": "SQL Injection",
+            "confidence": 0.91,
+            "model_key": "xgboost",
+            "model_name": "XGBoost",
+            "model_outputs": {
+                "primary": {
+                    "model_key": "xgboost",
+                    "model_name": "XGBoost",
+                    "label": "SQL Injection",
+                    "confidence": 0.91,
+                    "encoded": 2,
+                },
+                "secondary": {
+                    "model_key": "decision_tree",
+                    "model_name": "DecisionTree",
+                    "label": "Brute Force",
+                    "confidence": 0.73,
+                    "encoded": 1,
+                },
+            },
+        }
         features = {"flow_duration": 4.5}
 
         payload = build_ids_event_payload(
@@ -41,7 +62,10 @@ class ForwardingContractsTest(unittest.TestCase):
         self.assertEqual(payload["attack_type"], "SQL Injection")
         self.assertEqual(payload["confidence_score"], 0.91)
         self.assertEqual(payload["action_taken"], "alert")
+        self.assertEqual(payload["model"], "xgboost")
         self.assertIn("session_id", payload)
+        self.assertEqual(payload["features"]["model_outputs"]["primary"]["model_name"], "XGBoost")
+        self.assertEqual(payload["features"]["model_outputs"]["secondary"]["model_name"], "DecisionTree")
 
     def test_build_session_upsert_payload_matches_backend_contract(self) -> None:
         session_key = SimpleNamespace(src_ip="10.0.0.1", dst_ip="10.0.0.2", protocol=6, src_port=1234, dst_port=80)

@@ -6,6 +6,7 @@ from pathlib import Path
 import joblib
 
 from ml.features.schema import FEATURE_COLUMNS
+from ml.runtime.custom_decision_tree_runtime import install_runtime_aliases
 
 
 class RuntimeArtifactError(ValueError):
@@ -36,7 +37,8 @@ def load_runtime_model_artifacts(
         )
 
     try:
-        model = joblib.load(model_path)
+        with install_runtime_aliases():
+            model = joblib.load(model_path)
         label_encoder = joblib.load(encoder_path)
     except Exception as exc:  # pragma: no cover - wrapped by runtime guard
         raise RuntimeArtifactError(f"Unable to load runtime artifacts: {exc}") from exc
