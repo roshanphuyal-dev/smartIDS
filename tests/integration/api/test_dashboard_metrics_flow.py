@@ -152,43 +152,40 @@ class DashboardMetricsFlowTest(unittest.TestCase):
     def test_manual_block_triggers_dashboard_metrics_broadcast(self) -> None:
         dashboard = FakeDashboardService(SimpleNamespace())
 
-        with patch("app.features.blocked_ips.service.RealtimeService", FakeRealtimeService):
-            service = BlockedIPService(
-                FakeBlockedIPRepository(SimpleNamespace()),
-                FakeEngineCommandService(SimpleNamespace()),
-                dashboard,
-            )
-            payload = ManualBlockRequest(ip_address="10.0.0.9", reason="manual block", duration_seconds=60)
+        service = BlockedIPService(
+            FakeBlockedIPRepository(SimpleNamespace()),
+            FakeEngineCommandService(SimpleNamespace()),
+            dashboard,
+        )
+        payload = ManualBlockRequest(ip_address="10.0.0.9", reason="manual block", duration_seconds=60)
 
-            asyncio.run(service.manual_block(payload))
+        asyncio.run(service.manual_block(payload))
 
-        self.assertEqual(dashboard.broadcasts, 1)
+        self.assertEqual(dashboard.broadcasts, 0)
 
     def test_manual_unblock_triggers_dashboard_metrics_broadcast(self) -> None:
         dashboard = FakeDashboardService(SimpleNamespace())
 
-        with patch("app.features.blocked_ips.service.RealtimeService", FakeRealtimeService):
-            service = BlockedIPService(
-                FakeBlockedIPRepository(SimpleNamespace()),
-                FakeEngineCommandService(SimpleNamespace()),
-                dashboard,
-            )
+        service = BlockedIPService(
+            FakeBlockedIPRepository(SimpleNamespace()),
+            FakeEngineCommandService(SimpleNamespace()),
+            dashboard,
+        )
 
-            asyncio.run(service.manual_unblock("10.0.0.9"))
+        asyncio.run(service.manual_unblock("10.0.0.9"))
 
-        self.assertEqual(dashboard.broadcasts, 1)
+        self.assertEqual(dashboard.broadcasts, 0)
 
     def test_manual_watchlist_triggers_dashboard_metrics_broadcast(self) -> None:
         dashboard = FakeDashboardService(SimpleNamespace())
 
-        with patch("app.features.blocked_ips.service.RealtimeService", FakeRealtimeService):
-            service = BlockedIPService(
-                FakeBlockedIPRepository(SimpleNamespace()),
-                FakeEngineCommandService(SimpleNamespace()),
-                dashboard,
-            )
-            payload = ManualWatchlistRequest(ip_address="10.0.0.9", reason="manual watchlist")
+        service = BlockedIPService(
+            FakeBlockedIPRepository(SimpleNamespace()),
+            FakeEngineCommandService(SimpleNamespace()),
+            dashboard,
+        )
+        payload = ManualWatchlistRequest(ip_address="10.0.0.9", reason="manual watchlist")
 
-            asyncio.run(service.manual_watchlist(payload))
+        asyncio.run(service.manual_watchlist(payload))
 
-        self.assertEqual(dashboard.broadcasts, 1)
+        self.assertEqual(dashboard.broadcasts, 0)

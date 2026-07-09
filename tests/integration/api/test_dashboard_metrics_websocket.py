@@ -34,8 +34,11 @@ class DashboardMetricsWebSocketTest(unittest.TestCase):
             "ts": datetime(2026, 6, 8, tzinfo=timezone.utc).isoformat(),
             "metrics": {
                 "total_threats": 12,
+                "total_sessions": 9,
+                "threats_today": 6,
                 "active_sessions": 4,
                 "blocked_ips": 3,
+                "blocked_events_today": 2,
                 "watchlisted_ips": 1,
                 "high_severity_threats": 2,
             },
@@ -49,7 +52,10 @@ class DashboardMetricsWebSocketTest(unittest.TestCase):
                 message = websocket.receive_json()
                 self.assertEqual(message["channel"], "dashboard_metrics")
                 self.assertEqual(message["payload"]["metrics"]["total_threats"], 12)
+                self.assertEqual(message["payload"]["metrics"]["total_sessions"], 9)
+                self.assertEqual(message["payload"]["metrics"]["threats_today"], 6)
                 self.assertEqual(message["payload"]["metrics"]["active_sessions"], 4)
                 self.assertEqual(message["payload"]["metrics"]["blocked_ips"], 3)
+                self.assertEqual(message["payload"]["metrics"]["blocked_events_today"], 2)
                 self.assertEqual(message["payload"]["metrics"]["watchlisted_ips"], 1)
                 self.assertEqual(message["payload"]["metrics"]["high_severity_threats"], 2)

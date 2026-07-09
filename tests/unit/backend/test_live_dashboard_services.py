@@ -65,6 +65,18 @@ class FakeDashboardService:
         self.broadcasts += 1
 
 
+class FakeAnalyticsRollupService:
+    def __init__(self, _session) -> None:
+        self.telemetry_payloads = []
+        self.ids_event_payloads = []
+
+    async def record_telemetry_snapshot(self, payload) -> None:
+        self.telemetry_payloads.append(payload)
+
+    async def record_ids_event(self, payload) -> None:
+        self.ids_event_payloads.append(payload)
+
+
 class FakeTelemetrySnapshot:
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
@@ -164,8 +176,15 @@ class LiveDashboardServicesTest(unittest.TestCase):
             service_state["dashboard"] = dashboard
             return dashboard
 
+        def analytics_factory(_session):
+            analytics = FakeAnalyticsRollupService(_session)
+            service_state["analytics"] = analytics
+            return analytics
+
         with patch("app.features.engine_telemetry.service.EngineTelemetryRepository", side_effect=repo_factory), patch(
             "app.features.engine_telemetry.service.DashboardService", side_effect=dashboard_factory
+        ), patch(
+            "app.features.engine_telemetry.service.AnalyticsRollupService", side_effect=analytics_factory
         ), patch("app.features.engine_telemetry.service.RealtimeService", FakeRealtimeService), patch(
             "app.features.engine_telemetry.service.EngineTelemetrySnapshot", FakeTelemetrySnapshot
         ):
@@ -199,6 +218,8 @@ class LiveDashboardServicesTest(unittest.TestCase):
         self.assertEqual(service_state["dashboard"].broadcasts, 1)
         self.assertEqual(len(service._realtime_service.health_messages), 1)
         self.assertEqual(len(service._realtime_service.dashboard_messages), 1)
+        self.assertEqual(len(service_state["analytics"].telemetry_payloads), 1)
+        self.assertEqual(service_state["analytics"].telemetry_payloads[0].packets_received_total, 10)
         self.assertEqual(latest.packets_received_total, 10)
         self.assertEqual(total, 1)
         self.assertEqual(history[0].packet_queue_size, 3)
@@ -207,6 +228,8 @@ class LiveDashboardServicesTest(unittest.TestCase):
         with patch("app.features.ids_events.service.IDSEventRepository", FakeIDSEventRepository), patch(
             "app.features.ids_events.service.AlertService", FakeAlertService
         ), patch("app.features.ids_events.service.DashboardService", FakeDashboardService), patch(
+            "app.features.ids_events.service.AnalyticsRollupService", FakeAnalyticsRollupService
+        ), patch(
             "app.features.ids_events.service.RealtimeService", FakeRealtimeService
         ), patch("app.features.ids_events.service.IDSEvent", FakeIDSEvent):
             service = IDSEventService(SimpleNamespace())
@@ -238,11 +261,15 @@ class LiveDashboardServicesTest(unittest.TestCase):
         self.assertEqual(event.session_id, "session-1")
         self.assertEqual(len(service._realtime_service.alert_messages), 1)
         self.assertEqual(len(service._realtime_service.log_messages), 1)
+        self.assertEqual(len(service._analytics_rollup_service.ids_event_payloads), 1)
+        self.assertEqual(service._analytics_rollup_service.ids_event_payloads[0].prediction, "DDoS")
 
     def test_ids_event_ingest_keeps_benign_events_out_of_threat_channel(self) -> None:
         with patch("app.features.ids_events.service.IDSEventRepository", FakeIDSEventRepository), patch(
             "app.features.ids_events.service.AlertService", FakeAlertService
         ), patch("app.features.ids_events.service.DashboardService", FakeDashboardService), patch(
+            "app.features.ids_events.service.AnalyticsRollupService", FakeAnalyticsRollupService
+        ), patch(
             "app.features.ids_events.service.RealtimeService", FakeRealtimeService
         ), patch("app.features.ids_events.service.IDSEvent", FakeIDSEvent):
             service = IDSEventService(SimpleNamespace())
@@ -273,6 +300,8 @@ class LiveDashboardServicesTest(unittest.TestCase):
         self.assertFalse(alert_triggered)
         self.assertEqual(len(service._realtime_service.alert_messages), 0)
         self.assertEqual(len(service._realtime_service.log_messages), 1)
+        self.assertEqual(len(service._analytics_rollup_service.ids_event_payloads), 1)
+        self.assertEqual(service._analytics_rollup_service.ids_event_payloads[0].prediction, "Normal Traffic")
 
     def test_session_upsert_broadcasts_session_and_traffic_channels(self) -> None:
         with patch("app.features.sessions.service.NetworkSessionRepository", FakeSessionRepository), patch(
