@@ -86,13 +86,47 @@ Rationale behind key design choices in SmartIDS — the *why*, not the *what* (s
 
 ## Internal-service-token auth, separate from user sessions
 
-**Decision**: Endpoints the IDS runtime itself calls (`ids-events`, `sessions/upsert`, `block-events/upsert`, `engine-telemetry`, `engine-commands*`) are protected by a shared internal-service token (`INTERNAL_SERVICE_TOKEN` / `SMARTIDS_INTERNAL_SERVICE_TOKEN`), distinct from the cookie-based user-session auth used by browser clients.
+**Decision**: Endpoints the IDS runtime itself calls (`ids-events`, `sessions/upsert`, `block-events/upsert`, `engine-telemetry`, `engine-commands*`, `realtime/broadcast*`, `sql-injection/decide`) are protected by `require_internal_service_auth` (`backend/app/common/internal_auth.py`), distinct from the cookie-based user-session auth used by browser clients.
 
 **Why**: These are service-to-service calls with no browser/user context; reusing session-cookie auth wouldn't fit, and treating them as fully open would leave operational ingest endpoints unauthenticated. A prior incident (`backend/CHECKLIST.md`, 2026-07-12) where the two tokens drifted out of sync caused 401s on internal ingest — confirms this is treated as a hard dependency, not a nicety.
 
-**Source**: `backend/CHECKLIST.md` ("Add explicit service-to-service auth for IDS ingest..."); `.env.example` (`INTERNAL_SERVICE_TOKEN`, `SMARTIDS_INTERNAL_SERVICE_TOKEN`).
+**Source**: `backend/CHECKLIST.md` ("Add explicit service-to-service auth for IDS ingest..."); `.env.example` (`SMARTIDS_INTERNAL_SERVICE_TOKEN`).
 
-**Open gap**: `docs/api.md` notes `/realtime/broadcast*` and `/sql-injection/decide` currently have no auth dependency at all — not covered by the decision above; see `docs/roadmap.md` (Observed Gaps).
+**Superseded in part** — see "HMAC-signed shared secret, not bare-token comparison" below: the mechanism changed from a plain header-equality check to HMAC-SHA256 signing + Redis-backed nonce replay, and the `/realtime/broadcast*`/`/sql-injection/decide` auth gap noted here previously is now closed.
+
+---
+
+## HMAC-signed shared secret, not bare-token comparison
+
+**Decision**: The internal-service token is no longer sent on the wire and compared with `!=`. It is used only as an HMAC-SHA256 key: every request is signed over method, path+query, a SHA-256 hash of the body, a timestamp, and a per-request nonce (`x-smartids-signature`/`x-smartids-timestamp`/`x-smartids-nonce`), verified with `hmac.compare_digest` plus a ±30s freshness window and a Redis `SET NX EX 60` nonce replay cache. The same primitive (`verify_internal_ws_signature`) is reused for the engine↔backend command WebSocket's handshake, signing a fixed stand-in method/path since a WS handshake has no real HTTP request to sign.
+
+**Why**: A bare `!=` token comparison is a timing-attack surface and gives no replay protection — a captured request/header could be resent indefinitely. HMAC signing plus a nonce cache closes both gaps with one shared secret, still generated the same way (`openssl rand -hex 32`). `Settings` now also refuses to boot in production with an unset/weak (<64 char) token, making the fail-closed behavior structural rather than a runtime check that could be skipped; outside production an empty token is kept as an explicit, loudly-logged dev-only bypass rather than a silent no-op, preserving local-dev ergonomics.
+
+**Consequence, deliberately accepted**: a coordinated engine+backend redeploy is required (old engine can't auth to a new backend and vice versa) — no legacy/dual-mode compatibility shim was added, since there was no evidence of a rolling-deploy requirement across independently-versioned engine/backend instances.
+
+**Source**: `docs/roadmap.md` (Completed — Engine Performance / Security / Realtime, 2026-07-18); `backend/app/common/internal_auth.py`, `backend/app/core/config.py`.
+
+---
+
+## In-process thread pool for secondary-model dispatch, not Celery
+
+**Decision**: The secondary (shadow) model's inference is dispatched to a bounded, in-process `ThreadPoolExecutor`-shaped worker pool (parametrized `BackgroundPublisher`, `SMARTIDS_SECONDARY_MODEL_WORKERS`/queue size), not routed through the existing Celery/Redis task queue the backend already runs for email/geolocation.
+
+**Why**: Celery adds network latency (broker round-trip) unsuitable for a per-packet real-time path. Threads (not `ProcessPoolExecutor`) were chosen because `ml/runtime/custom_decision_tree_runtime.py`'s `install_runtime_aliases()` monkeypatches `sys.modules["__main__"]` for `joblib` deserialization — a process-local trick that would need re-running per subprocess and would multiply model memory N×. The custom decision tree's predict path is pure-Python and does contend for the GIL, but a single-row tree walk is microseconds and the call is fire-and-forget, so bounded contention is an explicit, accepted trade-off against the alternative (fully synchronous, blocking the packet-queue consumer).
+
+**Consequence**: the secondary-model callback is structurally isolated (a standalone `SecondaryShadowEventPublisher`, constructed with no reference to `PacketProcessor`) so it can only publish shadow-prediction events, never call into `auto_blocker`/`_publish_block_event`/`session_builder` — preventing a late-arriving async result from ever reaching the order-sensitive session-upsert or alerting paths.
+
+**Source**: `docs/roadmap.md` (Completed — Engine Performance / Security / Realtime, 2026-07-18); `packet_capture/processor/packet_processor.py`, `ml/runtime/live_predictor.py`/`completed_flow_predictor.py`.
+
+---
+
+## Engine↔backend WebSocket is a latency optimization, not a replacement for the durable command queue
+
+**Decision**: `packet_capture/realtime/engine_ws_client.py` (opt-in via `SMARTIDS_ENGINE_WS_ENABLED`) pushes block/unblock commands to the engine over a persistent authenticated WebSocket, but the DB-backed `engine_commands` table remains the source of truth — the client still performs one `GET /engine-commands` catch-up poll on every connect/reconnect before relying on WS push, and command acks still flow through the same ack path either way.
+
+**Why**: A WebSocket push is strictly a latency win over the previous 1.5s poll loop; treating it as a full replacement would lose commands issued while the engine is disconnected, since WS delivery has no persistence of its own. Default is off, and the old poll loop is unchanged unless explicitly enabled, so this is an additive rollout, not a cutover.
+
+**Source**: `docs/roadmap.md` (Completed — Engine Performance / Security / Realtime, 2026-07-18; "staged `SMARTIDS_ENGINE_WS_ENABLED` rollout" under In Progress); `docs/architecture.md` (Packet / Data Flow).
 
 ---
 

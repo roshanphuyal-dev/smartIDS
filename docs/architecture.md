@@ -139,9 +139,9 @@ Full endpoint-by-endpoint reference: `docs/api.md`. Summary by access pattern:
 | Access pattern | Who calls it | Example routes |
 |----------------|--------------|----------------|
 | Session-authenticated REST | Frontend dashboard (browser, cookie) | `/dashboard/*`, `/blocked-ips`, `/sessions`, `/threats`, `/notifications`, `/api-keys` |
-| Internal-service-authenticated REST | IDS runtime (`packet_capture`/`response_engine` forwarders/pollers) | `/ids-events` (POST), `/sessions/upsert`, `/block-events/upsert`, `/engine-telemetry`, `/engine-commands*` |
+| Internal-service-authenticated REST | IDS runtime (`packet_capture`/`response_engine` forwarders/pollers) | `/ids-events` (POST), `/sessions/upsert`, `/block-events/upsert`, `/engine-telemetry`, `/engine-commands*`, `/realtime/broadcast*`, `/sql-injection/decide` |
 | Internal-service-authenticated WebSocket | IDS runtime (`packet_capture/realtime/engine_ws_client.py`), opt-in via `SMARTIDS_ENGINE_WS_ENABLED` | `/realtime/engine-ws` (first frame is a signed `auth` envelope, verified the same way as the REST routes above, plus Redis nonce replay check; unauthenticated frames get the connection closed) |
-| Unauthenticated (no dependency found) | Realtime broadcast triggers, SQL-injection decision relay | `/realtime/broadcast*`, `/realtime/ws`, `/sql-injection/decide` |
+| Unauthenticated (no dependency found) | Frontend dashboard's push channel | `/realtime/ws` |
 | Public (pre-auth) | Anonymous browser clients | `/auth/register`, `/auth/login`, `/auth/oauth/*`, `/auth/forgot-password`, `/auth/reset-password` |
 
 ---
@@ -171,11 +171,12 @@ Two independent auth mechanisms, used for different callers:
 
 ### 2. Internal service token (IDS runtime → backend)
 
-- `require_internal_service_auth` (`app/common/internal_auth.py`) checks a request header `x-smartids-internal-token` against `settings.INTERNAL_SERVICE_TOKEN`.
-- **If `INTERNAL_SERVICE_TOKEN` is unset/empty, the check is skipped entirely** — the dependency returns immediately without enforcing anything. This makes the internal-auth gate opt-in at deploy time, not fail-closed by default; worth confirming intentional before exposing these routes beyond a trusted network.
-- Applied to: `POST /ids-events`, `sessions/upsert`, `block-events/upsert`, `engine-telemetry`, `engine-commands*` (queue/poll/ack). The runtime side sends the matching token via `SMARTIDS_INTERNAL_SERVICE_TOKEN`.
-- The engine<->backend command WebSocket (`/realtime/engine-ws`, `app/features/realtime/engine_ws_router.py`) reuses the same verification primitive (`verify_internal_ws_signature` in `app/common/internal_auth.py`) for its handshake, signing a fixed stand-in method/path (`ENGINE_WS_AUTH_METHOD`/`ENGINE_WS_AUTH_PATH` in `app/features/realtime/engine_ws_schemas.py`) since there is no real HTTP request to sign during a WS handshake.
-- **Not applied to** `/realtime/broadcast*`, `/realtime/ws`, or `/sql-injection/decide` — no auth dependency of either kind is present on these routes (`docs/api.md`, `docs/roadmap.md` Observed Gaps).
+- `require_internal_service_auth` (`app/common/internal_auth.py`) requires an HMAC-SHA256 signature (`x-smartids-signature`), timestamp (`x-smartids-timestamp`, ±30s window), and single-use nonce (`x-smartids-nonce`, checked against a Redis `SET NX EX 60` replay cache) on every request — not a bare token comparison. The signing string is `f"{method}\n{path_with_query}\n{sha256(body).hexdigest()}\n{timestamp}\n{nonce}"`, HMAC'd with the shared secret (`settings.SMARTIDS_INTERNAL_SERVICE_TOKEN`) and compared via `hmac.compare_digest`. The engine side signs with the matching `packet_capture/auth/request_signer.py::InternalRequestSigner`.
+- **Production**: `Settings` refuses to boot if `SMARTIDS_INTERNAL_SERVICE_TOKEN` is unset or under 64 chars (256 bits) — fail-closed by construction, not by a runtime check. **Non-production**: an empty token is treated as an explicit dev-only bypass (logged as a warning on every request) rather than a silent no-op.
+- If the Redis replay cache itself is unreachable, the dependency raises `ServiceUnavailableException` (503) rather than either failing open or crashing — distinct from a rejected (replayed/invalid) request.
+- Applied to: `POST /ids-events`, `sessions/upsert`, `block-events/upsert`, `engine-telemetry`, `engine-commands*` (queue/poll/ack), `/realtime/broadcast*` (4 routes), `/sql-injection/decide`.
+- The engine<->backend command WebSocket (`/realtime/engine-ws`, `app/features/realtime/engine_ws_router.py`) reuses the same verification primitive (`verify_internal_ws_signature` in `app/common/internal_auth.py`) for its handshake, signing a fixed stand-in method/path (`ENGINE_WS_AUTH_METHOD`/`ENGINE_WS_AUTH_PATH` in `app/features/realtime/engine_ws_schemas.py`) since there is no real HTTP request to sign during a WS handshake; a Redis-unavailable error closes the socket with a distinct code (`4503`) instead of crashing the handshake.
+- **Not applied to** `/realtime/ws` — the frontend-facing push channel, a different auth model (browser/session, not service-to-service); see WebSocket Flow, above.
 
 ### 3. API keys
 
