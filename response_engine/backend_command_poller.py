@@ -2,22 +2,24 @@ import json
 import time
 from urllib import error, request
 
+from packet_capture.auth.request_signer import InternalRequestSigner, path_with_query
+
 
 class BackendCommandPoller:
     def __init__(
         self,
         endpoint_url: str,
         timeout_seconds: float = 2.0,
-        internal_service_token: str = "",
+        signer: InternalRequestSigner | None = None,
     ):
         self.endpoint_url = endpoint_url
         self.timeout_seconds = timeout_seconds
-        self.internal_service_token = internal_service_token.strip()
+        self._signer = signer
 
     def poll_commands(self) -> list[dict]:
         headers = {}
-        if self.internal_service_token:
-            headers["x-smartids-internal-token"] = self.internal_service_token
+        if self._signer is not None:
+            headers.update(self._signer.sign("GET", path_with_query(self.endpoint_url), b""))
 
         req = request.Request(url=self.endpoint_url, method="GET", headers=headers)
         try:
@@ -47,8 +49,8 @@ class BackendCommandPoller:
             }
         ).encode("utf-8")
         headers = {"Content-Type": "application/json"}
-        if self.internal_service_token:
-            headers["x-smartids-internal-token"] = self.internal_service_token
+        if self._signer is not None:
+            headers.update(self._signer.sign("POST", path_with_query(ack_endpoint_url), payload))
 
         req = request.Request(
             url=ack_endpoint_url,

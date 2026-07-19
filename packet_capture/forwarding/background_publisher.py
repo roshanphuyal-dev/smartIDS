@@ -15,6 +15,7 @@ class BackgroundPublisher:
         publish: Callable[[dict], bool],
         max_queue_size: int = 512,
         drop_log_every: int = 25,
+        worker_count: int = 1,
     ) -> None:
         self.name = name
         self._publish = publish
@@ -23,8 +24,29 @@ class BackgroundPublisher:
         self._logger = IDSLogger.get_logger(f"forwarding.{name}")
         self._lock = Lock()
         self._dropped = 0
-        self._worker = Thread(target=self._run, daemon=True, name=f"smartids-{name}-publisher")
-        self._worker.start()
+        self._worker_count = max(1, worker_count)
+        self._workers: list[Thread] = []
+        for index in range(self._worker_count):
+            worker_name = (
+                f"smartids-{name}-publisher" if self._worker_count == 1 else f"smartids-{name}-publisher-{index}"
+            )
+            worker = Thread(target=self._run, daemon=True, name=worker_name)
+            worker.start()
+            self._workers.append(worker)
+        self._worker = self._workers[0]
+
+    def queue_size(self) -> int:
+        try:
+            return int(self._queue.qsize())
+        except NotImplementedError:
+            return 0
+
+    def queue_maxsize(self) -> int:
+        return int(self._queue.maxsize)
+
+    def dropped_total(self) -> int:
+        with self._lock:
+            return self._dropped
 
     def submit(self, payload: dict) -> bool:
         try:

@@ -74,7 +74,9 @@ class BuildCICIDS2017ModelTest(unittest.TestCase):
 
             expected_files = {
                 "cicids2017_live_compatible_model.pkl",
+                "cicids2017_live_compatible_model.pkl.sha256",
                 "live_compatible_label_encoder.pkl",
+                "live_compatible_label_encoder.pkl.sha256",
                 "live_compatible_feature_columns.json",
                 "live_compatible_benchmark_report.json",
                 "cicids2017_evaluation_report.md",

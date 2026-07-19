@@ -5,13 +5,20 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import joblib
 
 from ml.features.schema import FEATURE_COLUMNS
-from ml.runtime.artifact_validation import load_runtime_model_artifacts
+from ml.runtime.artifact_integrity import compute_sha256
+from ml.runtime.artifact_validation import RuntimeArtifactError, load_runtime_model_artifacts
 from ml.runtime.completed_flow_predictor import CompletedFlowPredictor
 from ml.runtime.live_predictor import LivePredictor
+
+
+def _write_checksum(path: Path) -> None:
+    checksum_path = path.with_name(path.name + ".sha256")
+    checksum_path.write_text(f"{compute_sha256(path)}\n", encoding="utf-8")
 
 
 class DummyRuntimeModel:
@@ -44,6 +51,8 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
         joblib.dump(SimpleNamespace(feature_names_in_=list(feature_columns)), model_path)
         joblib.dump(SimpleNamespace(classes_=["Normal Traffic", "SQL Injection"]), encoder_path)
         feature_columns_path.write_text(json.dumps(feature_columns), encoding="utf-8")
+        _write_checksum(model_path)
+        _write_checksum(encoder_path)
 
         return model_path, encoder_path, feature_columns_path
 
@@ -71,30 +80,36 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
             primary_root.mkdir()
             secondary_root.mkdir()
 
+            primary_model_path = primary_root / "primary_model.pkl"
+            primary_encoder_path = primary_root / "primary_encoder.pkl"
             joblib.dump(
                 DummyRuntimeModel(encoded_value=1, probabilities=[0.1, 0.9]),
-                primary_root / "primary_model.pkl",
+                primary_model_path,
             )
             joblib.dump(
                 DummyLabelEncoder(["Normal Traffic", "DDoS"]),
-                primary_root / "primary_encoder.pkl",
+                primary_encoder_path,
             )
             (primary_root / "primary_columns.json").write_text(
                 json.dumps(FEATURE_COLUMNS[:-1] + ["unexpected_column"]),
                 encoding="utf-8",
             )
+            secondary_model_path = secondary_root / "secondary_model.pkl"
+            secondary_encoder_path = secondary_root / "secondary_encoder.pkl"
             joblib.dump(
                 DummyRuntimeModel(encoded_value=0, probabilities=[0.8, 0.2]),
-                secondary_root / "secondary_model.pkl",
+                secondary_model_path,
             )
             joblib.dump(
                 DummyLabelEncoder(["Normal Traffic", "DDoS"]),
-                secondary_root / "secondary_encoder.pkl",
+                secondary_encoder_path,
             )
             (secondary_root / "secondary_columns.json").write_text(
                 json.dumps(FEATURE_COLUMNS),
                 encoding="utf-8",
             )
+            _write_checksum(secondary_model_path)
+            _write_checksum(secondary_encoder_path)
 
             predictor = LivePredictor(
                 primary_bundle_dir=primary_root,
@@ -122,6 +137,8 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
             joblib.dump(SimpleNamespace(feature_names_in_=list(FEATURE_COLUMNS)), model_path)
             joblib.dump(SimpleNamespace(classes_=["Normal Traffic", "SQL Injection"]), encoder_path)
             feature_columns_path.write_text(json.dumps(FEATURE_COLUMNS), encoding="utf-8")
+            _write_checksum(model_path)
+            _write_checksum(encoder_path)
 
             predictor = CompletedFlowPredictor()
             predictor.model_path = model_path
@@ -147,21 +164,25 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
             primary_root.mkdir()
             secondary_root.mkdir()
 
+            primary_model_path = primary_root / "primary_model.pkl"
+            secondary_model_path = secondary_root / "secondary_model.pkl"
+            primary_encoder_path = primary_root / "primary_encoder.pkl"
+            secondary_encoder_path = secondary_root / "secondary_encoder.pkl"
             joblib.dump(
                 DummyRuntimeModel(encoded_value=1, probabilities=[0.1, 0.9]),
-                primary_root / "primary_model.pkl",
+                primary_model_path,
             )
             joblib.dump(
                 DummyRuntimeModel(encoded_value=0, probabilities=[0.8, 0.2]),
-                secondary_root / "secondary_model.pkl",
+                secondary_model_path,
             )
             joblib.dump(
                 DummyLabelEncoder(["Normal Traffic", "DDoS"]),
-                primary_root / "primary_encoder.pkl",
+                primary_encoder_path,
             )
             joblib.dump(
                 DummyLabelEncoder(["Normal Traffic", "DDoS"]),
-                secondary_root / "secondary_encoder.pkl",
+                secondary_encoder_path,
             )
             (primary_root / "primary_columns.json").write_text(
                 json.dumps(FEATURE_COLUMNS),
@@ -171,6 +192,10 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
                 json.dumps(FEATURE_COLUMNS),
                 encoding="utf-8",
             )
+            _write_checksum(primary_model_path)
+            _write_checksum(secondary_model_path)
+            _write_checksum(primary_encoder_path)
+            _write_checksum(secondary_encoder_path)
             (primary_root / "primary_metadata.json").write_text(
                 json.dumps({"algorithm": "xgboost", "dataset": "cicids2018"}),
                 encoding="utf-8",
@@ -223,18 +248,22 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
             primary_root.mkdir()
             secondary_root.mkdir()
 
+            primary_model_path = primary_root / "primary_model.pkl"
+            primary_encoder_path = primary_root / "primary_encoder.pkl"
             joblib.dump(
                 DummyRuntimeModel(encoded_value=1, probabilities=[0.1, 0.9]),
-                primary_root / "primary_model.pkl",
+                primary_model_path,
             )
             joblib.dump(
                 DummyLabelEncoder(["Normal Traffic", "DDoS"]),
-                primary_root / "primary_encoder.pkl",
+                primary_encoder_path,
             )
             (primary_root / "primary_columns.json").write_text(
                 json.dumps(FEATURE_COLUMNS),
                 encoding="utf-8",
             )
+            _write_checksum(primary_model_path)
+            _write_checksum(primary_encoder_path)
             (secondary_root / "secondary_columns.json").write_text(
                 json.dumps(FEATURE_COLUMNS[:-1] + ["unexpected_column"]),
                 encoding="utf-8",
@@ -266,3 +295,47 @@ class RuntimeArtifactValidationTest(unittest.TestCase):
             self.assertEqual(prediction["label"], "DDoS")
             self.assertNotIn("secondary", prediction["model_outputs"])
             self.assertIn("FEATURE_COLUMNS", predictor.secondary_artifact_error or "")
+
+    def test_load_runtime_model_artifacts_rejects_tampered_model_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_path, encoder_path, feature_columns_path = self._write_artifacts(
+                Path(temp_dir),
+                FEATURE_COLUMNS,
+            )
+
+            # Tamper with the model file after its checksum was recorded.
+            with model_path.open("r+b") as file:
+                file.seek(0)
+                original_byte = file.read(1)
+                file.seek(0)
+                file.write(bytes([original_byte[0] ^ 0xFF]))
+
+            with mock.patch(
+                "ml.runtime.artifact_validation.joblib.load",
+                side_effect=AssertionError("joblib.load must not be called on a tampered artifact"),
+            ):
+                with self.assertRaises(RuntimeArtifactError):
+                    load_runtime_model_artifacts(
+                        model_path,
+                        encoder_path,
+                        feature_columns_path,
+                    )
+
+    def test_load_runtime_model_artifacts_rejects_missing_checksum_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_path, encoder_path, feature_columns_path = self._write_artifacts(
+                Path(temp_dir),
+                FEATURE_COLUMNS,
+            )
+            model_path.with_name(model_path.name + ".sha256").unlink()
+
+            with mock.patch(
+                "ml.runtime.artifact_validation.joblib.load",
+                side_effect=AssertionError("joblib.load must not be called without a checksum file"),
+            ):
+                with self.assertRaises(RuntimeArtifactError):
+                    load_runtime_model_artifacts(
+                        model_path,
+                        encoder_path,
+                        feature_columns_path,
+                    )

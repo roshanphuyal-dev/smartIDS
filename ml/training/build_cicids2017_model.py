@@ -248,6 +248,12 @@ def build_model_bundle(
 
         model_wrapper.save(str(model_path))
         joblib.dump(label_encoder, encoder_path)
+        model_path.with_name(model_path.name + ".sha256").write_text(
+            f"{_sha256(model_path)}\n", encoding="utf-8"
+        )
+        encoder_path.with_name(encoder_path.name + ".sha256").write_text(
+            f"{_sha256(encoder_path)}\n", encoding="utf-8"
+        )
         feature_columns_path.write_text(
             json.dumps(FEATURE_COLUMNS, indent=2),
             encoding="utf-8",

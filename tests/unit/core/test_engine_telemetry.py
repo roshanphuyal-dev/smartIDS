@@ -40,6 +40,8 @@ class EngineTelemetryCollectorTest(unittest.TestCase):
         self.assertEqual(snapshot["packet_queue_size"], 2)
         self.assertEqual(snapshot["packet_queue_maxsize"], 10)
         self.assertEqual(snapshot["packet_queue_usage_percent"], 20.0)
+        self.assertEqual(snapshot["secondary_model_predictions_total"], 0)
+        self.assertEqual(snapshot["secondary_model_predictions_per_30s"], 0)
 
     def test_snapshot_expires_packet_window_and_reports_ml_rate(self) -> None:
         now = 100.0
@@ -50,6 +52,7 @@ class EngineTelemetryCollectorTest(unittest.TestCase):
         collector = EngineTelemetryCollector(clock=clock, packet_window_seconds=30)
         collector.record_packet_received()
         collector.record_ml_prediction(duration_seconds=0.02)
+        collector.record_secondary_model_prediction()
         now = 131.0
 
         snapshot = collector.snapshot(
@@ -63,6 +66,26 @@ class EngineTelemetryCollectorTest(unittest.TestCase):
         self.assertEqual(snapshot["ml_predictions_per_30s"], 0)
         self.assertEqual(snapshot["ml_processing_rate_per_30s"], 0)
         self.assertEqual(snapshot["last_ml_prediction_latency_ms"], 20.0)
+        self.assertEqual(snapshot["secondary_model_predictions_total"], 1)
+        self.assertEqual(snapshot["secondary_model_predictions_per_30s"], 0)
+
+    def test_snapshot_reports_secondary_model_prediction_rate_within_window(self) -> None:
+        now = 100.0
+
+        def clock() -> float:
+            return now
+
+        collector = EngineTelemetryCollector(clock=clock, packet_window_seconds=30)
+        collector.record_secondary_model_prediction()
+        collector.record_secondary_model_prediction()
+
+        snapshot = collector.snapshot(
+            packet_queue=Queue(maxsize=10),
+            session_builder=SessionBuilder(),
+        )
+
+        self.assertEqual(snapshot["secondary_model_predictions_total"], 2)
+        self.assertEqual(snapshot["secondary_model_predictions_per_30s"], 2)
 
     def test_packet_loss_detected_clears_after_drop_window_expires(self) -> None:
         now = 100.0

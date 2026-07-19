@@ -25,9 +25,11 @@ class EngineTelemetryCollector:
         self._packets_dropped_total = 0
         self._ml_predictions_total = 0
         self._last_ml_prediction_latency_ms = 0.0
+        self._secondary_model_predictions_total = 0
         self._packet_received_times: deque[float] = deque()
         self._packet_dropped_times: deque[float] = deque()
         self._ml_prediction_times: deque[float] = deque()
+        self._secondary_model_prediction_times: deque[float] = deque()
 
     def record_packet_received(self) -> None:
         now = self._clock()
@@ -55,12 +57,20 @@ class EngineTelemetryCollector:
             self._last_ml_prediction_latency_ms = round(max(0.0, duration_seconds) * 1000.0, 4)
             self._trim(self._ml_prediction_times, now)
 
+    def record_secondary_model_prediction(self) -> None:
+        now = self._clock()
+        with self._lock:
+            self._secondary_model_predictions_total += 1
+            self._secondary_model_prediction_times.append(now)
+            self._trim(self._secondary_model_prediction_times, now)
+
     def snapshot(self, *, packet_queue: Queue, session_builder) -> dict:
         now = self._clock()
         with self._lock:
             self._trim(self._packet_received_times, now)
             self._trim(self._packet_dropped_times, now)
             self._trim(self._ml_prediction_times, now)
+            self._trim(self._secondary_model_prediction_times, now)
             packets_received_total = self._packets_received_total
             packets_processed_total = self._packets_processed_total
             packets_dropped_total = self._packets_dropped_total
@@ -69,6 +79,8 @@ class EngineTelemetryCollector:
             ml_predictions_total = self._ml_predictions_total
             ml_predictions_per_window = len(self._ml_prediction_times)
             last_ml_latency_ms = self._last_ml_prediction_latency_ms
+            secondary_model_predictions_total = self._secondary_model_predictions_total
+            secondary_model_predictions_per_window = len(self._secondary_model_prediction_times)
 
         queue_size = _safe_qsize(packet_queue)
         queue_maxsize = max(0, int(getattr(packet_queue, "maxsize", 0) or 0))
@@ -76,7 +88,11 @@ class EngineTelemetryCollector:
         if queue_maxsize > 0:
             queue_usage_percent = round((queue_size / queue_maxsize) * 100.0, 4)
 
-        active_sessions = list(getattr(session_builder, "sessions", {}).values())
+        snapshot_sessions = getattr(session_builder, "snapshot_sessions", None)
+        if callable(snapshot_sessions):
+            active_sessions = snapshot_sessions()
+        else:
+            active_sessions = list(getattr(session_builder, "sessions", {}).values())
         return {
             "ts": datetime.fromtimestamp(now, tz=timezone.utc).isoformat(),
             "packets_received_total": packets_received_total,
@@ -93,6 +109,8 @@ class EngineTelemetryCollector:
             "ml_predictions_per_30s": ml_predictions_per_window,
             "ml_processing_rate_per_30s": ml_predictions_per_window,
             "last_ml_prediction_latency_ms": last_ml_latency_ms,
+            "secondary_model_predictions_total": secondary_model_predictions_total,
+            "secondary_model_predictions_per_30s": secondary_model_predictions_per_window,
             "application_attribution_available": False,
             "application_attribution_note": (
                 "Passive packet capture cannot reliably map flows to local process "

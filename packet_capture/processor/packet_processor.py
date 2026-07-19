@@ -16,6 +16,95 @@ from packet_capture.forwarding.contracts import build_ids_event_payload, build_s
 from packet_capture.utils.logger import IDSLogger, log_event
 
 
+class SecondaryShadowEventPublisher:
+    """Publishes secondary (DecisionTree) shadow predictions to the append-only
+    ids-events pipe only.
+
+    Structurally scoped to exactly the three things this needs — an event
+    publisher callable, a telemetry collector, and the alert confidence
+    threshold — instead of being a bound method of ``PacketProcessor``. This
+    means it has no way to reach ``auto_blocker``, ``_publish_block_event``,
+    ``session_builder``, or session-upsert state even if a future edit tried
+    to add that: those references simply aren't in scope here, so a
+    late-arriving async secondary result cannot influence a decision it
+    should not.
+    """
+
+    def __init__(self, *, event_publisher, telemetry_collector, alert_confidence_threshold: float, logger):
+        self._event_publisher = event_publisher
+        self._telemetry_collector = telemetry_collector
+        self._alert_confidence_threshold = alert_confidence_threshold
+        self._logger = logger
+
+    def __call__(self, result: dict, context: dict) -> None:
+        if self._telemetry_collector is not None:
+            self._telemetry_collector.record_secondary_model_prediction()
+
+        if not callable(self._event_publisher):
+            return
+
+        label = str(result.get("label", "Unknown"))
+        confidence = float(result.get("confidence", 0.0))
+        timestamp = float(context.get("timestamp", time.time()))
+        event_type = str(context.get("event_type", "ml_secondary_shadow"))
+        session_id = str(context.get("session_key", ""))
+        event_id = self._prediction_event_id(session_id, event_type, label, timestamp)
+
+        event = {
+            "schema_version": "1.0",
+            "event_id": event_id,
+            "ts": datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(),
+            "source": context.get("src_ip"),
+            "source_ip": context.get("src_ip"),
+            "destination_ip": context.get("dst_ip"),
+            "source_port": context.get("src_port"),
+            "destination_port": context.get("dst_port"),
+            "protocol": context.get("protocol"),
+            "model": result.get("model_key", "decision_tree"),
+            "prediction": label,
+            "attack_type": label,
+            "confidence": confidence,
+            "confidence_score": confidence,
+            "severity": self._severity_from_prediction(label, confidence),
+            "action": "shadow",
+            "action_taken": "shadow",
+            "detection_method": event_type,
+            "session_id": session_id,
+            "risk_score": confidence,
+            "is_final": bool(context.get("is_final", False)),
+            "ml_prediction": label,
+            "features": {"model_outputs": {"secondary": result}},
+        }
+
+        try:
+            self._event_publisher(event)
+        except Exception as exc:
+            log_event(
+                self._logger,
+                "error",
+                "failed to publish secondary shadow prediction event",
+                {
+                    "event_type": "secondary_shadow_publish_error",
+                    "session_id": session_id,
+                    "prediction_event_type": event_type,
+                    "label": label,
+                    "error": str(exc),
+                },
+            )
+
+    @staticmethod
+    def _prediction_event_id(session_id: str, event_type: str, label: str, timestamp: float) -> str:
+        raw = f"{session_id}:{event_type}:{label}:{int(timestamp * 1000)}"
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+    def _severity_from_prediction(self, label: str, confidence: float) -> str:
+        if label == "Normal Traffic":
+            return "low"
+        if confidence >= self._alert_confidence_threshold:
+            return "high"
+        return "medium"
+
+
 class PacketProcessor:
     def __init__(
         self,
@@ -31,8 +120,6 @@ class PacketProcessor:
         self.feature_store = FeatureStore()
         self.heuristic_events = FeatureStore(max_size=1000)
         self.ml_events = FeatureStore(max_size=1000)
-        self.live_predictor = LivePredictor()
-        self.completed_flow_predictor = CompletedFlowPredictor()
         self.alert_store = FeatureStore(max_size=1000)
         self.alert_publisher = alert_publisher
         self.event_publisher = event_publisher
@@ -40,6 +127,16 @@ class PacketProcessor:
         self.block_event_publisher = block_event_publisher
         self.telemetry_collector = telemetry_collector
         self.alert_confidence_threshold = 0.80
+        self._publish_secondary_shadow_event = SecondaryShadowEventPublisher(
+            event_publisher=event_publisher,
+            telemetry_collector=telemetry_collector,
+            alert_confidence_threshold=self.alert_confidence_threshold,
+            logger=IDSLogger.get_logger("packet.processor.secondary_shadow"),
+        )
+        self.live_predictor = LivePredictor(publish_secondary_result=self._publish_secondary_shadow_event)
+        self.completed_flow_predictor = CompletedFlowPredictor(
+            publish_secondary_result=self._publish_secondary_shadow_event
+        )
         self.auto_blocker = AutoBlocker()
         self.response_policy = ResponsePolicy()
         self._session_alert_state = {}
@@ -100,6 +197,34 @@ class PacketProcessor:
             )
 
         return ok, status
+
+    def telemetry_extras(self) -> dict:
+        """Aggregate secondary-model dispatcher queue stats for both predictors.
+
+        Exposed so callers (e.g. SnifferService's periodic telemetry publish)
+        can merge these into an EngineTelemetryCollector snapshot without
+        reaching through PacketProcessor's private predictor/dispatcher
+        attributes across module boundaries.
+        """
+        dispatchers = [
+            predictor.secondary_publisher
+            for predictor in (self.live_predictor, self.completed_flow_predictor)
+            if predictor.secondary_publisher is not None
+        ]
+
+        queue_size = sum(dispatcher.queue_size() for dispatcher in dispatchers)
+        queue_maxsize = sum(dispatcher.queue_maxsize() for dispatcher in dispatchers)
+        dropped_total = sum(dispatcher.dropped_total() for dispatcher in dispatchers)
+        usage_percent = 0.0
+        if queue_maxsize > 0:
+            usage_percent = round((queue_size / queue_maxsize) * 100.0, 4)
+
+        return {
+            "secondary_model_queue_size": queue_size,
+            "secondary_model_queue_maxsize": queue_maxsize,
+            "secondary_model_queue_usage_percent": usage_percent,
+            "secondary_model_predictions_dropped_total": dropped_total,
+        }
 
     def _log_startup_status(self):
         firewall_name = "none"
@@ -299,7 +424,20 @@ class PacketProcessor:
             self.feature_store.add(features)
 
             prediction_started = time.perf_counter()
-            prediction = self.live_predictor.predict(features)
+            prediction = self.live_predictor.predict_primary_and_submit_secondary(
+                features,
+                {
+                    "session_key": self._session_key_str(session_key),
+                    "src_ip": session.src_ip,
+                    "dst_ip": session.dst_ip,
+                    "src_port": session.src_port,
+                    "dst_port": session.dst_port,
+                    "protocol": session.protocol,
+                    "timestamp": session.last_seen,
+                    "event_type": "ml_live_secondary_shadow",
+                    "is_final": False,
+                },
+            )
             prediction_duration = time.perf_counter() - prediction_started
             if self.telemetry_collector is not None and prediction is not None:
                 self.telemetry_collector.record_ml_prediction(
@@ -408,8 +546,19 @@ class PacketProcessor:
 
         try:
             self.alert_publisher(alert)
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(
+                self.logger,
+                "error",
+                "failed to publish alert",
+                {
+                    "event_type": "alert_publish_error",
+                    "attack_type": alert.get("attack_type"),
+                    "src_ip": alert.get("src_ip"),
+                    "dst_ip": alert.get("dst_ip"),
+                    "error": str(exc),
+                },
+            )
 
     def _publish_block_event(
         self,
@@ -444,8 +593,19 @@ class PacketProcessor:
 
         try:
             self.block_event_publisher(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(
+                self.logger,
+                "error",
+                "failed to publish block event",
+                {
+                    "event_type": "block_event_publish_error",
+                    "event_id": event_id,
+                    "source_ip": source_ip,
+                    "action_taken": action_taken,
+                    "error": str(exc),
+                },
+            )
 
     def _publish_prediction_event(
         self,
@@ -470,8 +630,19 @@ class PacketProcessor:
 
         try:
             self.event_publisher(event)
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(
+                self.logger,
+                "error",
+                "failed to publish prediction event",
+                {
+                    "event_type": "prediction_event_publish_error",
+                    "session_id": self._session_key_str(session_key),
+                    "prediction_event_type": event_type,
+                    "label": prediction.get("label") if isinstance(prediction, dict) else None,
+                    "error": str(exc),
+                },
+            )
 
     def _publish_session_update(
         self,
@@ -494,8 +665,20 @@ class PacketProcessor:
 
         try:
             self.session_update_publisher(session_update)
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(
+                self.logger,
+                "error",
+                "failed to publish session update",
+                {
+                    "event_type": "session_update_publish_error",
+                    "session_id": self._session_key_str(session_key),
+                    "session_state": session_state,
+                    "src_ip": getattr(session, "src_ip", None),
+                    "dst_ip": getattr(session, "dst_ip", None),
+                    "error": str(exc),
+                },
+            )
 
     def _risk_score(self, label: str | None, confidence: float, heuristic_score: int) -> float:
         ml_score = 0.0 if label in (None, "Normal Traffic") else confidence
@@ -530,7 +713,20 @@ class PacketProcessor:
         )
         final_features = self.feature_extractor.extract(final_session)
         prediction_started = time.perf_counter()
-        final_prediction = self.completed_flow_predictor.predict(final_features)
+        final_prediction = self.completed_flow_predictor.predict_primary_and_submit_secondary(
+            final_features,
+            {
+                "session_key": self._session_key_str(final_key),
+                "src_ip": final_session.src_ip,
+                "dst_ip": final_session.dst_ip,
+                "src_port": final_session.src_port,
+                "dst_port": final_session.dst_port,
+                "protocol": final_session.protocol,
+                "timestamp": final_session.last_seen,
+                "event_type": "ml_completed_flow_secondary_shadow",
+                "is_final": True,
+            },
+        )
         prediction_duration = time.perf_counter() - prediction_started
         if self.telemetry_collector is not None and final_prediction is not None:
             self.telemetry_collector.record_ml_prediction(

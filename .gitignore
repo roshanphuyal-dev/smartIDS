@@ -1,4 +1,4 @@
-# Virtual Environment 
+# Virtual Environment
 .venv/
 
 # Python Cache
@@ -79,3 +79,15 @@ ml/datasets/UNSW_NB15_datasets/
 
 # Local runtime state
 .smartids-runtime.env
+
+#caveman files
+.clinerules
+.clinerules/*
+.cursor
+.cursor/*
+.github
+.github/*
+.opencode/*
+.opencode
+.windsurf
+.windsurf/*

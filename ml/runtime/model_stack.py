@@ -106,13 +106,49 @@ class RuntimeModelStack:
         self.artifact_error = self.primary_bundle.artifact_error
         self.secondary_artifact_error = None if self.secondary_bundle is None else self.secondary_bundle.artifact_error
 
+    def build_frame(self, features: dict[str, Any]) -> pd.DataFrame:
+        row = {column: float(features.get(column, 0.0)) for column in FEATURE_COLUMNS}
+        frame = pd.DataFrame([row], columns=FEATURE_COLUMNS)
+        return frame.replace([np.inf, -np.inf], 0).fillna(0)
+
+    def predict_primary(self, features: dict[str, Any]) -> dict[str, Any] | None:
+        if not self.enabled:
+            return None
+
+        frame = self.build_frame(features)
+        return self.predict_primary_from_frame(frame)
+
+    def predict_primary_from_frame(self, frame: pd.DataFrame) -> dict[str, Any]:
+        """Same as ``predict_primary`` but takes an already-built frame.
+
+        Lets a caller that also needs the frame for something else (e.g.
+        dispatching it to the secondary model) build it once and reuse it,
+        instead of every consumer calling ``build_frame`` on the same
+        features dict independently.
+        """
+        primary_prediction = self.primary_bundle.predict(frame)
+        secondary_enabled = self.secondary_bundle is not None and self.secondary_bundle.enabled
+
+        return {
+            "label": primary_prediction["label"],
+            "confidence": primary_prediction["confidence"],
+            "encoded": primary_prediction["encoded"],
+            "model_key": primary_prediction["model_key"],
+            "model_name": primary_prediction["model_name"],
+            "model_outputs": {"primary": primary_prediction},
+            "model_stack": {
+                "primary_enabled": self.primary_bundle.enabled,
+                "secondary_enabled": secondary_enabled,
+                "primary_artifact_error": self.primary_bundle.artifact_error,
+                "secondary_artifact_error": self.secondary_artifact_error,
+            },
+        }
+
     def predict(self, features: dict[str, Any]) -> dict[str, Any] | None:
         if not self.enabled:
             return None
 
-        row = {column: float(features.get(column, 0.0)) for column in FEATURE_COLUMNS}
-        frame = pd.DataFrame([row], columns=FEATURE_COLUMNS)
-        frame = frame.replace([np.inf, -np.inf], 0).fillna(0)
+        frame = self.build_frame(features)
 
         primary_prediction = self.primary_bundle.predict(frame)
         model_outputs = {"primary": primary_prediction}

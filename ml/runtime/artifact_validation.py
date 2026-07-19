@@ -13,6 +13,10 @@ class RuntimeArtifactError(ValueError):
     pass
 
 
+def _checksum_path(path: Path) -> Path:
+    return path.with_name(path.name + ".sha256")
+
+
 def load_runtime_model_artifacts(
     model_path: Path,
     encoder_path: Path,
@@ -35,6 +39,13 @@ def load_runtime_model_artifacts(
         raise RuntimeArtifactError(
             "Saved feature schema does not match canonical FEATURE_COLUMNS"
         )
+
+    # Verify integrity before deserializing — joblib/pickle execute arbitrary
+    # code on load, so a tampered file must be rejected before that happens.
+    from ml.runtime.artifact_integrity import verify_artifact_checksum
+
+    verify_artifact_checksum(model_path, _checksum_path(model_path))
+    verify_artifact_checksum(encoder_path, _checksum_path(encoder_path))
 
     try:
         with install_runtime_aliases():

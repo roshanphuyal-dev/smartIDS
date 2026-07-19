@@ -14,8 +14,10 @@ from packet_capture.forwarding.fastapi_ids_event_forwarder import FastAPIIDSEven
 from packet_capture.forwarding.fastapi_session_update_forwarder import FastAPISessionUpdateForwarder
 from packet_capture.forwarding.fastapi_engine_telemetry_forwarder import FastAPIEngineTelemetryForwarder
 from packet_capture.forwarding.background_publisher import BackgroundPublisher
+from packet_capture.realtime.engine_ws_client import EngineWSClient
 from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
+from packet_capture.auth.request_signer import InternalRequestSigner
 from response_engine.backend_command_poller import BackendCommandPoller
 
 
@@ -38,9 +40,22 @@ class SnifferService:
         backend_commands_endpoint = os.getenv("SMARTIDS_COMMANDS_ENDPOINT", "").strip()
         backend_commands_ack_endpoint = os.getenv("SMARTIDS_COMMANDS_ACK_ENDPOINT", "").strip()
         internal_service_token = os.getenv("SMARTIDS_INTERNAL_SERVICE_TOKEN", "").strip()
+        internal_request_signer = (
+            InternalRequestSigner(internal_service_token) if internal_service_token else None
+        )
         backend_commands_poll_interval_seconds = float(
             os.getenv("SMARTIDS_COMMANDS_POLL_INTERVAL_SECONDS", "1.5")
         )
+        # Workstream 6c: persistent WS push in place of the 1.5s poll above.
+        # Default off — when disabled (or misconfigured), behavior is
+        # unchanged: the poll loop is the only command delivery path.
+        engine_ws_enabled = os.getenv("SMARTIDS_ENGINE_WS_ENABLED", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        engine_ws_url = os.getenv("SMARTIDS_ENGINE_WS_URL", "").strip()
         self.fastapi_alert_endpoint = fastapi_alert_endpoint
         self.fastapi_ids_event_endpoint = fastapi_ids_event_endpoint
         self.fastapi_session_update_endpoint = fastapi_session_update_endpoint
@@ -50,6 +65,9 @@ class SnifferService:
         self.backend_commands_ack_endpoint = backend_commands_ack_endpoint
         self.backend_commands_poll_interval_seconds = max(0.5, backend_commands_poll_interval_seconds)
         self.backend_command_poller = None
+        self.engine_ws_enabled = engine_ws_enabled
+        self.engine_ws_url = engine_ws_url
+        self.engine_ws_client = None
         self.telemetry_collector = EngineTelemetryCollector()
         self.telemetry_forwarder = None
         self.telemetry_interval_seconds = max(
@@ -73,13 +91,34 @@ class SnifferService:
         if fastapi_engine_telemetry_endpoint:
             self.telemetry_forwarder = FastAPIEngineTelemetryForwarder(
                 endpoint_url=fastapi_engine_telemetry_endpoint,
-                internal_service_token=internal_service_token,
+                signer=internal_request_signer,
             )
         if backend_commands_endpoint:
             self.backend_command_poller = BackendCommandPoller(
                 endpoint_url=backend_commands_endpoint,
-                internal_service_token=internal_service_token,
+                signer=internal_request_signer,
             )
+        if self.engine_ws_enabled:
+            if engine_ws_url and internal_request_signer is not None and self.backend_command_poller is not None:
+                self.engine_ws_client = EngineWSClient(
+                    ws_url=engine_ws_url,
+                    signer=internal_request_signer,
+                    apply_command=lambda command: self.processor.apply_backend_command(command),
+                    catchup_poller=self.backend_command_poller,
+                    catchup_ack_endpoint_url=backend_commands_ack_endpoint or None,
+                )
+            else:
+                log_event(
+                    self.logger,
+                    "warning",
+                    "engine ws enabled but misconfigured, falling back to command poll loop",
+                    {
+                        "event_type": "engine_ws_misconfigured",
+                        "engine_ws_url_set": bool(engine_ws_url),
+                        "internal_request_signer_set": internal_request_signer is not None,
+                        "backend_commands_endpoint_set": bool(backend_commands_endpoint),
+                    },
+                )
         if processor is not None:
             self.processor = processor
         else:
@@ -91,7 +130,7 @@ class SnifferService:
             if fastapi_alert_endpoint:
                 alert_forwarder = FastAPIAlertForwarder(
                     endpoint_url=fastapi_alert_endpoint,
-                    internal_service_token=internal_service_token,
+                    signer=internal_request_signer,
                 )
                 alert_publisher = self._build_background_publisher(
                     name="alerts",
@@ -101,7 +140,7 @@ class SnifferService:
             if fastapi_ids_event_endpoint:
                 event_forwarder = FastAPIIDSEventForwarder(
                     endpoint_url=fastapi_ids_event_endpoint,
-                    internal_service_token=internal_service_token,
+                    signer=internal_request_signer,
                 )
                 event_publisher = self._build_background_publisher(
                     name="ids-events",
@@ -111,7 +150,7 @@ class SnifferService:
             if fastapi_session_update_endpoint:
                 session_update_forwarder = FastAPISessionUpdateForwarder(
                     endpoint_url=fastapi_session_update_endpoint,
-                    internal_service_token=internal_service_token,
+                    signer=internal_request_signer,
                 )
                 session_update_publisher = self._build_background_publisher(
                     name="session-updates",
@@ -121,7 +160,7 @@ class SnifferService:
             if fastapi_block_event_endpoint:
                 block_event_forwarder = FastAPIBlockEventForwarder(
                     endpoint_url=fastapi_block_event_endpoint,
-                    internal_service_token=internal_service_token,
+                    signer=internal_request_signer,
                 )
                 block_event_publisher = self._build_background_publisher(
                     name="block-events",
@@ -165,7 +204,13 @@ class SnifferService:
 
         sniff_thread.start()
 
-        if self.backend_command_poller is not None:
+        if self.engine_ws_client is not None:
+            # WS push replaces the poll loop; the WS client still does one
+            # catch-up GET /engine-commands per (re)connect internally, so
+            # the durable queue keeps being drained even though this thread
+            # never starts.
+            self.engine_ws_client.start()
+        elif self.backend_command_poller is not None:
             command_thread = threading.Thread(
                 target=self._poll_backend_commands,
                 daemon=True,
@@ -206,6 +251,10 @@ class SnifferService:
                 "backend_commands_enabled": bool(self.backend_commands_endpoint),
                 "backend_commands_endpoint": self.backend_commands_endpoint,
                 "backend_commands_poll_interval_seconds": self.backend_commands_poll_interval_seconds,
+                "engine_ws_enabled": self.engine_ws_enabled,
+                "engine_ws_active": self.engine_ws_client is not None,
+                "engine_ws_url": self.engine_ws_url,
+                "command_delivery_mode": "websocket" if self.engine_ws_client is not None else "poll",
             },
         )
 
@@ -222,6 +271,9 @@ class SnifferService:
                 packet_queue=self.packet_queue,
                 session_builder=self.processor.session_builder,
             )
+            telemetry_extras = getattr(self.processor, "telemetry_extras", None)
+            if callable(telemetry_extras):
+                snapshot.update(telemetry_extras())
             ok = self.telemetry_forwarder.publish_telemetry(snapshot)
             if not ok:
                 log_event(
