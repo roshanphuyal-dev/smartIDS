@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -488,7 +488,10 @@ class EngineHeaderInternalAuthTest(unittest.TestCase):
     def test_active_engine_with_correct_signature_is_accepted(self) -> None:
         engine_secret = "engine-secret-active-000000000000"
         FakeEngineRepository.engines_by_public_id["engine-active-1"] = SimpleNamespace(
-            status=EngineStatus.active, secret=engine_secret
+            status=EngineStatus.active,
+            secret=engine_secret,
+            previous_secret=None,
+            previous_secret_expires_at=None,
         )
         payload = {
             "command_id": "c-engine-active",
@@ -510,7 +513,10 @@ class EngineHeaderInternalAuthTest(unittest.TestCase):
         global SMARTIDS_INTERNAL_SERVICE_TOKEN — by signing with a different
         secret than the one stored on the (active, otherwise-valid) engine."""
         FakeEngineRepository.engines_by_public_id["engine-active-2"] = SimpleNamespace(
-            status=EngineStatus.active, secret="engine-secret-real-0000000000000"
+            status=EngineStatus.active,
+            secret="engine-secret-real-0000000000000",
+            previous_secret=None,
+            previous_secret_expires_at=None,
         )
         payload = {
             "command_id": "c-engine-wrong-secret",
@@ -530,7 +536,10 @@ class EngineHeaderInternalAuthTest(unittest.TestCase):
     def test_revoked_engine_is_rejected_even_with_correct_signature(self) -> None:
         engine_secret = "engine-secret-revoked-00000000000"
         FakeEngineRepository.engines_by_public_id["engine-revoked-1"] = SimpleNamespace(
-            status=EngineStatus.revoked, secret=engine_secret
+            status=EngineStatus.revoked,
+            secret=engine_secret,
+            previous_secret=None,
+            previous_secret_expires_at=None,
         )
         payload = {
             "command_id": "c-engine-revoked",
@@ -563,6 +572,82 @@ class EngineHeaderInternalAuthTest(unittest.TestCase):
             response = client.post("/api/v1/engine-commands", content=body, headers=headers)
             self.assertEqual(response.status_code, 401, response.text)
 
+    def test_previous_secret_accepted_within_grace_window(self) -> None:
+        """Covers the credential-rotation dual-secret grace window: a request
+        signed with the just-superseded secret still authenticates while
+        previous_secret_expires_at is in the future."""
+        old_secret = "engine-secret-previous-000000000"
+        FakeEngineRepository.engines_by_public_id["engine-rotated-1"] = SimpleNamespace(
+            status=EngineStatus.active,
+            secret="engine-secret-current-00000000000",
+            previous_secret=old_secret,
+            previous_secret_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        payload = {
+            "command_id": "c-engine-rotated-grace",
+            "action": "watchlist",
+            "ip_address": "203.0.113.25",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=old_secret)
+        headers[ENGINE_ID_HEADER] = "engine-rotated-1"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 201, response.text)
+
+    def test_current_secret_still_accepted_after_rotation(self) -> None:
+        """The new secret must keep working too, alongside the grace-window
+        previous secret."""
+        new_secret = "engine-secret-current-00000000001"
+        FakeEngineRepository.engines_by_public_id["engine-rotated-2"] = SimpleNamespace(
+            status=EngineStatus.active,
+            secret=new_secret,
+            previous_secret="engine-secret-previous-000000001",
+            previous_secret_expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        payload = {
+            "command_id": "c-engine-rotated-new",
+            "action": "watchlist",
+            "ip_address": "203.0.113.26",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=new_secret)
+        headers[ENGINE_ID_HEADER] = "engine-rotated-2"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 201, response.text)
+
+    def test_previous_secret_rejected_after_grace_window_expires(self) -> None:
+        """Once previous_secret_expires_at is in the past, the old secret
+        must no longer authenticate — the grace window is bounded."""
+        old_secret = "engine-secret-expired-grace-00000"
+        FakeEngineRepository.engines_by_public_id["engine-rotated-3"] = SimpleNamespace(
+            status=EngineStatus.active,
+            secret="engine-secret-current-00000000002",
+            previous_secret=old_secret,
+            previous_secret_expires_at=datetime.now(timezone.utc) - timedelta(seconds=1),
+        )
+        payload = {
+            "command_id": "c-engine-rotated-expired",
+            "action": "watchlist",
+            "ip_address": "203.0.113.27",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=old_secret)
+        headers[ENGINE_ID_HEADER] = "engine-rotated-3"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+
     def test_no_engine_header_falls_back_to_global_token_path_regression(self) -> None:
         """Regression guard: when x-smartids-engine-id is absent, behavior must
         be byte-for-byte identical to before the engines feature existed — the
@@ -570,7 +655,10 @@ class EngineHeaderInternalAuthTest(unittest.TestCase):
         EngineRepository is never consulted, even if it would otherwise
         authorize a differently-named engine."""
         FakeEngineRepository.engines_by_public_id["should-not-be-looked-up"] = SimpleNamespace(
-            status=EngineStatus.active, secret="irrelevant"
+            status=EngineStatus.active,
+            secret="irrelevant",
+            previous_secret=None,
+            previous_secret_expires_at=None,
         )
         payload = {
             "command_id": "c-no-engine-header",

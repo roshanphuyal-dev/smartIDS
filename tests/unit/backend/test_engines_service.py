@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -22,10 +23,14 @@ os.environ.setdefault("PASSWORD_RESET_BASE_URL", "http://127.0.0.1:3000")
 
 from app.features.engines.exceptions import (
     EngineLimitExceededException,
+    EngineNotActiveException,
+    EngineNotFoundException,
     PendingRegistrationNotFoundException,
 )
+from app.features.engines.models import Engine, EngineStatus
 from app.features.engines.schemas import RegisterInitRequest
 from app.features.engines.service import (
+    CREDENTIAL_ROTATION_GRACE_PERIOD_SECONDS,
     MAX_ENGINES_PER_USER,
     PENDING_REGISTRATION_KEY_PREFIX,
     PENDING_REGISTRATION_TTL_SECONDS,
@@ -42,12 +47,21 @@ class FakeEngineRepository:
     def __init__(self) -> None:
         self.created: list = []
         self.count_by_user_return = 0
+        self.engines_by_id_and_user: dict[tuple[str, str], object] = {}
+        self.updated: list = []
 
     async def count_by_user(self, user_id: str) -> int:
         return self.count_by_user_return
 
     async def create(self, engine):
         self.created.append(engine)
+        return engine
+
+    async def get_by_id_and_user(self, engine_id: str, user_id: str):
+        return self.engines_by_id_and_user.get((engine_id, user_id))
+
+    async def update(self, engine):
+        self.updated.append(engine)
         return engine
 
 
@@ -175,6 +189,67 @@ class EngineServiceApproveRegistrationTest(unittest.TestCase):
 
         self.assertEqual(repository.created, [])
         redis_client.delete.assert_not_awaited()
+
+
+class EngineServiceRotateCredentialTest(unittest.TestCase):
+    def test_rotates_secret_sets_grace_window_and_returns_new_secret_once(self) -> None:
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        engine = Engine(
+            user_id="user-1",
+            name="My Engine",
+            engine_public_id="engine-pub-1",
+            secret="old-secret-value",
+        )
+        engine.status = EngineStatus.active
+        repository.engines_by_id_and_user[("engine-1", "user-1")] = engine
+        service = EngineService(repository, redis_client)
+
+        updated, new_secret = asyncio.run(
+            service.rotate_credential("engine-1", "user-1")
+        )
+
+        self.assertIs(updated, engine)
+        self.assertEqual(engine.secret, new_secret)
+        self.assertNotEqual(new_secret, "old-secret-value")
+        self.assertTrue(new_secret)
+        self.assertEqual(engine.previous_secret, "old-secret-value")
+        self.assertIsNotNone(engine.previous_secret_expires_at)
+
+        expected_expiry = datetime.now(timezone.utc) + timedelta(
+            seconds=CREDENTIAL_ROTATION_GRACE_PERIOD_SECONDS
+        )
+        # Allow a small delta for test execution time.
+        self.assertLess(
+            abs((engine.previous_secret_expires_at - expected_expiry).total_seconds()), 5
+        )
+        self.assertEqual(repository.updated, [engine])
+
+    def test_raises_when_engine_missing_or_not_owned(self) -> None:
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        service = EngineService(repository, redis_client)
+
+        with self.assertRaises(EngineNotFoundException):
+            asyncio.run(service.rotate_credential("missing-engine", "user-1"))
+
+    def test_raises_when_engine_is_revoked(self) -> None:
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        engine = Engine(
+            user_id="user-1",
+            name="Revoked Engine",
+            engine_public_id="engine-pub-2",
+            secret="whatever-secret",
+        )
+        engine.status = EngineStatus.revoked
+        repository.engines_by_id_and_user[("engine-2", "user-1")] = engine
+        service = EngineService(repository, redis_client)
+
+        with self.assertRaises(EngineNotActiveException):
+            asyncio.run(service.rotate_credential("engine-2", "user-1"))
+
+        self.assertEqual(repository.updated, [])
 
 
 if __name__ == "__main__":

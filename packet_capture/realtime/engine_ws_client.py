@@ -31,11 +31,14 @@ the backend re-derives the expected signature using the same two constants.
 
 Envelope shape
 --------------
-``{"type": "auth"|"command"|"command_ack"|"event"|"telemetry"|"ping"|"pong",
+``{"type": "auth"|"command"|"command_ack"|"event"|"telemetry"|"config_update"|"ping"|"pong",
 "id": "<uuid4>", "ts": <unix epoch seconds>, "payload": {...}}``. This client
 only produces/consumes ``auth``, ``command``, ``command_ack``, ``ping``, and
 ``pong`` — ``event``/``telemetry`` push stays on the five existing
 ``fastapi_*_forwarder.py`` HTTP paths, out of scope for this workstream.
+``config_update`` is reserved plumbing only: if ``apply_config_update`` is
+supplied it is invoked with the frame's payload, otherwise the frame is
+logged and ignored — there is no concrete config payload/producer yet.
 
 Outbound backpressure
 ---------------------
@@ -87,6 +90,7 @@ class EngineWSClient:
         ws_url: str,
         signer: InternalRequestSigner,
         apply_command: Callable[[dict], tuple[bool, str]],
+        apply_config_update: Callable[[dict], None] | None = None,
         catchup_poller: BackendCommandPoller | None = None,
         catchup_ack_endpoint_url: str | None = None,
         command_ack_queue_size: int = DEFAULT_COMMAND_ACK_QUEUE_SIZE,
@@ -99,6 +103,7 @@ class EngineWSClient:
         self._ws_url = ws_url
         self._signer = signer
         self._apply_command = apply_command
+        self._apply_config_update = apply_config_update
         self._catchup_poller = catchup_poller
         self._catchup_ack_endpoint_url = catchup_ack_endpoint_url
         self._reconnect_base_seconds = max(0.1, reconnect_base_seconds)
@@ -298,6 +303,8 @@ class EngineWSClient:
 
         if msg_type == "command":
             await self._handle_command(payload)
+        elif msg_type == "config_update":
+            await self._handle_config_update(payload)
         elif msg_type == "ping":
             await self._send_envelope("pong", {})
         elif msg_type == "pong":
@@ -332,6 +339,27 @@ class EngineWSClient:
                 "engine ws command ack queue full, ack dropped",
                 {"event_type": "engine_ws_ack_dropped", "command_id": command_id},
             )
+
+    async def _handle_config_update(self, config: dict) -> None:
+        """Dispatch an incoming ``config_update`` frame.
+
+        Reserved plumbing only, mirroring ``event``/``telemetry`` on the
+        backend side: there is no concrete config payload/producer yet, so
+        by default this just logs and drops the frame. Callers that want to
+        act on config pushes supply ``apply_config_update`` to the
+        constructor.
+        """
+        if self._apply_config_update is None:
+            log_event(
+                self._logger,
+                "info",
+                "engine ws config_update frame received but ignored (no handler registered)",
+                {"event_type": "engine_ws_config_update_unhandled"},
+            )
+            return
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._apply_config_update, config)
 
     # -- outbound frame writing -------------------------------------------
 
