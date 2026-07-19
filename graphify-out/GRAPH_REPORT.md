@@ -1,12 +1,18 @@
-# Graph Report - /home/fenrir/Projects/smartIDS  (2026-07-17)
+# Graph Report - smartIDS  (2026-07-19)
 
 ## Corpus Check
-- Large corpus: 679 files · ~218,324 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder.
+- 694 files · ~248,222 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3376 nodes · 6347 edges · 269 communities (205 shown, 64 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 762 edges (avg confidence: 0.69)
-- Token cost: 220,800 input · 38,800 output
+- 5182 nodes · 8752 edges · 462 communities (333 shown, 129 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 916 edges (avg confidence: 0.67)
+- Token cost: 0 input · 0 output
+
+## Graph Freshness
+- Built from commit: `972345e4`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - ml/runtime (n=86)
@@ -227,113 +233,294 @@
 - docs (n=1)
 - (root) (n=1)
 - (root) (n=1)
+- Parallel & Intercepting Routes
+- use-realtime-connection-state.ts
+- test_secondary_model_dispatch.py
+- Engine
+- API Reference
+- Data Patterns
+- 5. Re-render Optimization
+- router.py
+- SmartIDS: Browser-Based Engine Registration + Capture-Level Watch/Exclude Filtering
+- Roadmap
+- Bundling
+- 7. JavaScript Performance
+- Quick Reference
+- EngineTelemetryIngestTest
+- EngineWSRouterTest
+- Dashboard (`/api/v1/dashboard`) — `app/features/dashboard/`
+- Find Skills
+- SKILL.md
+- Forms & Inputs
+- Customization & Theming
+- Available Tools
+- Component Composition
+- CompletedFlowPredictor
+- contracts.py
+- get_internal_auth_redis
+- APIKeyService
+- SQLInjectionEvent
+- Development Workflow
+- Error Handling
+- File Conventions
+- Commands
+- Tools
+- Styling & Customization
+- 6. Rendering Performance
+- Auth (`/api/v1/auth`) — `app/features/auth/`
+- Font Optimization
+- shadcn/ui
+- 3. Server-Side Performance
+- CustomDecisionTreeClassifier
+- .test_enqueue_command_pushes_over_ws_when_newly_created
+- create_api_key
+- RealtimeConnectionManager
+- Async Params and SearchParams
+- Functions
+- Common Causes and Fixes
+- Image Optimization
+- Route Handlers
+- Scripts
+- React Best Practices
+- Sections
+- FakeSessionService
+- InvalidIDSEventPayloadException
+- list_threats
+- graphify reference: extra exports and benchmark
+- Coding Standards
+- Base vs Radix
+- scripts
+- layout.tsx
+- FakeAsyncRedis
+- EmailDeliveryError
+- SmartIDS
+- Drizzle Query Patterns
+- Relational Queries API
+- package.json
+- ModelStackSplitTest
+- RegisterRequest
+- ThreatService
+- Detection Rules
+- Runtime Selection
+- Connection Pooling
+- Joins
+- Critical Rules
+- 1. Eliminating Waterfalls
+- 2. Bundle Size Optimization
+- get_engine_service
+- RegisterInitRequest
+- api_smoke_dashboard_metrics_ws.py
+- graphify reference: query, path, explain
+- API Keys (`/api/v1/api-keys`) — `app/features/api_keys/`
+- Blocked IPs (`/api/v1/blocked-ips`) — `app/features/blocked_ips/`
+- Realtime (`/api/v1/realtime`) — `app/features/realtime/`
+- postgres-drizzle
+- Drizzle Query Optimization
+- Indexing Strategies
+- Aggregations
+- Select Queries
+- shadcn CLI Reference
+- React Best Practices
+- _DummyAsyncOAuth2Client
+- SQL Injection Contract Notes
+- get_threat_service
+- ThreatNotFoundException
+- User Sessions (`/api/v1/auth/sessions`) — `app/features/user_sessions/`
+- Network Sessions (`/api/v1/sessions`) — `app/features/sessions/`
+- Schema Definition
+- Delete Operations
+- Transactions
+- Update Operations
+- Insert Operations
+- Icons
+- 8. Advanced Patterns
+- get_realtime_service
+- graphify reference: add a URL and watch a folder
+- graphify reference: commit hook and native CLAUDE.md integration
+- graphify reference: incremental update and cluster-only
+- Engine Commands (`/api/v1/engine-commands`) — `app/features/engine_commands/`
+- Threat Reports (`/api/v1/threats`) — `app/features/threats/`
+- Monitoring Queries
+- Ordering & Pagination
+- async-cheap-condition-before-await.md
+- Prefer Statically Analyzable Paths
+- server-hoist-static-io.md
+- FakeEngineCommandService
+- realtime_ws
+- graphify reference: GitHub clone and cross-repo merge
+- graphify reference: transcribe video and audio
+- Alerts (`/api/v1/alerts`) — `app/features/alerts/`
+- Health (`/api/v1/health`) — `app/features/health/`
+- IDS Events (`/api/v1/ids-events`) — `app/features/ids_events/`
+- SKILL.md
+- Raw SQL
+- CLAUDE.md
+- extraction-spec.md
+- advanced-effect-event-deps.md
+- advanced-event-handler-refs.md
+- advanced-init-once.md
+- advanced-use-latest.md
+- async-api-routes.md
+- async-dependencies.md
+- async-parallel.md
+- async-suspense-boundaries.md
+- bundle-barrel-imports.md
+- bundle-conditional.md
+- bundle-defer-third-party.md
+- bundle-dynamic-imports.md
+- bundle-preload.md
+- client-event-listeners.md
+- client-localstorage-schema.md
+- client-passive-event-listeners.md
+- client-swr-dedup.md
+- js-batch-dom-css.md
+- js-cache-function-results.md
+- js-cache-property-access.md
+- js-cache-storage.md
+- js-combine-iterations.md
+- js-early-exit.md
+- js-flatmap-filter.md
+- js-hoist-regexp.md
+- js-index-maps.md
+- js-length-check-first.md
+- js-min-max-loop.md
+- js-request-idle-callback.md
+- js-set-map-lookups.md
+- js-tosorted-immutable.md
+- rendering-activity.md
+- rendering-animate-svg-wrapper.md
+- rendering-conditional-render.md
+- rendering-content-visibility.md
+- rendering-hoist-jsx.md
+- rendering-hydration-no-flicker.md
+- rendering-hydration-suppress-warning.md
+- rendering-resource-hints.md
+- rendering-script-defer-async.md
+- rendering-svg-precision.md
+- rendering-usetransition-loading.md
+- rerender-defer-reads.md
+- rerender-dependencies.md
+- rerender-derived-state.md
+- rerender-derived-state-no-effect.md
+- rerender-functional-setstate.md
+- rerender-lazy-state-init.md
+- rerender-memo.md
+- rerender-memo-with-default-value.md
+- rerender-move-effect-to-event.md
+- rerender-no-inline-components.md
+- rerender-simple-expression-in-memo.md
+- rerender-split-combined-hooks.md
+- rerender-transitions.md
+- rerender-use-deferred-value.md
+- rerender-use-ref-transient-values.md
+- server-after-nonblocking.md
+- server-auth-actions.md
+- server-cache-lru.md
+- server-dedup-props.md
+- server-parallel-fetching.md
+- server-parallel-nested-fetching.md
+- server-serialization.md
+- _template.md
 
 ## God Nodes (most connected - your core abstractions)
-1. `DatabaseException` - 98 edges
-2. `create_response()` - 72 edges
-3. `cn()` - 71 edges
-4. `DashboardService` - 46 edges
-5. `Settings` - 43 edges
-6. `PacketProcessor` - 38 edges
-7. `AuthService` - 37 edges
-8. `getForwardedCookieHeader()` - 33 edges
-9. `SessionBuilder` - 31 edges
-10. `SnifferService` - 29 edges
+1. `cn()` - 113 edges
+2. `DatabaseException` - 105 edges
+3. `create_response()` - 78 edges
+4. `InternalRequestSigner` - 65 edges
+5. `DashboardService` - 50 edges
+6. `Settings` - 47 edges
+7. `PacketProcessor` - 45 edges
+8. `LivePredictor` - 42 edges
+9. `AuthService` - 37 edges
+10. `getForwardedCookieHeader()` - 36 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Loader Specialization for Canonical Feature Schema` --rationale_for--> `CICIDS2017Loader`  [EXTRACTED]
-  docs/superpowers/plans/2026-06-15-canonical-legacy-cicids-training.md → ml/datasets/cicids2017_loader.py
-- `Reproducible Dataset Preparation CLI Pattern` --rationale_for--> `prepare_dataset()`  [EXTRACTED]
-  docs/superpowers/plans/2026-06-15-cicids-dataset-preparation.md → ml/datasets/prepare_cicids2017.py
-- `Strict Canonical Dataset Validation Pattern` --rationale_for--> `prepare_cicids2017_features()`  [EXTRACTED]
-  docs/superpowers/plans/2026-06-15-strict-cicids-dataset-validation.md → ml/features/cicids2017_validation.py
-- `Staged Build with Atomic Activation and Rollback` --rationale_for--> `build_model_bundle()`  [EXTRACTED]
-  docs/superpowers/plans/2026-06-15-staged-cicids-model-build.md → ml/training/build_cicids2017_model.py
-- `realtime_ws()` --references--> `WebSocket Transport`  [EXTRACTED]
-  backend/app/features/realtime/router.py → docs/realtime-transport-map.md
+- `Engine Command Contract` --semantically_similar_to--> `Engine Command Contract (README)`  [INFERRED] [semantically similar]
+  backend/README.md → README.md
+- `Graphify Skill Trigger (.claude/CLAUDE.md)` --semantically_similar_to--> `Graphify Query Rules (root CLAUDE.md)`  [INFERRED] [semantically similar]
+  .claude/CLAUDE.md → CLAUDE.md
+- `Passive Userland IDS Project Identity` --semantically_similar_to--> `SmartIDS Root README Overview`  [INFERRED] [semantically similar]
+  AGENTS.md → README.md
+- `Backend Data Flow (Primary Web / SQLi / Desktop)` --semantically_similar_to--> `SmartIDS Runtime Pipeline (README)`  [INFERRED] [semantically similar]
+  backend/PLAN.md → README.md
+- `SessionFeatureExtractor` --uses--> `IDSLogger`  [INFERRED]
+  feature_engine/extractors/session_feature_extractor.py → packet_capture/utils/logger.py
 
 ## Import Cycles
-- None detected.
+- 3-file cycle: `frontend/src/components/dashboard/api-keys-manager.tsx -> frontend/src/lib/actions/api-keys.ts -> frontend/src/lib/db/index.ts -> frontend/src/components/dashboard/api-keys-manager.tsx`
 
 ## Hyperedges (group relationships)
 - **SQL Injection Feature Module Cluster** — backend_agents_sql_injection_merge_context, backend_plan_phase_sql_injection_feature_module, backend_app_features_sql_injection_contract_notes_sqldecisionrequest, backend_app_features_sql_injection_contract_notes_sqldecisionresponse [INFERRED 0.85]
 - **Local Infrastructure Docker Compose Stack** — backend_docker_compose_postgres_service, backend_docker_compose_redis_service, backend_docker_compose_pgadmin_service, backend_docker_compose_flower_service [EXTRACTED 1.00]
 - **Transactional Email Template System** — backend_templates_emails_base_layout, backend_templates_emails_oauth_account_notice_template, backend_templates_emails_verify_email_template [EXTRACTED 1.00]
-- **Dashboard Overview Duplicated Realtime Subscription** — frontend_src_components_dashboard_service_status_strip_servicestatusstrip, frontend_src_components_dashboard_overview_metrics_overviewmetricsgrid, frontend_src_components_dashboard_overview_charts_overviewcharts, frontend_src_lib_realtime_use_dashboard_realtime_usedashboardrealtime, docs_realtime_transport_map_duplicated_dashboard_realtime_issue [EXTRACTED 1.00]
-- **CICIDS2017 Canonical Feature Schema Pipeline** — ml_features_schema_feature_columns, ml_features_cicids2017_mapping_cicids2017_to_internal, ml_datasets_cicids2017_loader_cicids2017loader, ml_features_cicids2017_validation_prepare_cicids2017_features [INFERRED 0.85]
-- **Staged CICIDS2017 Model Build Pipeline** — ml_datasets_prepare_cicids2017_prepare_dataset, ml_training_build_cicids2017_model_build_model_bundle, ml_training_build_cicids2017_model_validate_dataset_metadata, ml_contracts_live_prediction_input_example, ml_contracts_live_prediction_output_example [INFERRED 0.80]
-- **Honest-Data / No-Fabrication Principle** — docs_superpowers_specs_2026_06_15_strict_cicids_dataset_validation_design_overview, docs_superpowers_specs_2026_06_18_dashboard_analytics_persistence_design_data_rules, frontend_checklist_honest_fallback_theme, frontend_runtime_api_audit_db_fallback_masking [INFERRED 0.80]
 - **Realtime Channel Contract Implementation Chain** — frontend_agent_handoff_realtime_channel_contract, frontend_agents_backend_contract, frontend_checklist_realtime_wiring, frontend_runtime_api_audit_telemetry_ignored [INFERRED 0.85]
 - **Frontend Context-Doc Preservation Guardrails** — frontend_agents_safe_change_rule, frontend_plan_guardrails, frontend_design_security_ui_copy [INFERRED 0.85]
-- **Hybrid Capture/Processing Runtime Pipeline** — packet_capture_runtime_capture_process_captureprocess, packet_capture_runtime_processing_process_processingprocess, packet_capture_runtime_hybrid_runner_hybridrunner, packet_capture_runtime_ipc_contracts_build_packet_message, concept_sessionbuilder [INFERRED 0.80]
-- **Queue Overload Response Chain** — packet_capture_sniffer_service_snifferservice, packet_capture_telemetry_engine_telemetry_enginetelemetry, packet_capture_processor_packet_processor_packetprocessor, packet_capture_sniffers_live_sniffer_livesniffer [INFERRED 0.80]
-- **CICIDS2017 Canonical Model Build Pipeline** — docs_superpowers_specs_2026_06_15_cicids_dataset_preparation_design, docs_superpowers_specs_2026_06_15_canonical_legacy_cicids_training_design, docs_superpowers_specs_2026_06_15_staged_cicids_model_build_design, concept_feature_columns [EXTRACTED 0.90]
 
-## Communities (269 total, 64 thin omitted)
+## Communities (462 total, 129 thin omitted)
 
 ### Community 0 - "ml/runtime (n=86)"
-Cohesion: 0.05
-Nodes (35): deque, FeatureStore, load_runtime_model_artifacts(), Path, ValueError, RuntimeArtifactError, CompletedFlowPredictor, Path (+27 more)
+Cohesion: 0.25
+Nodes (5): DummyLabelEncoder, DummyRuntimeModel, Path, RuntimeArtifactValidationTest, _write_checksum()
 
 ### Community 1 - "frontend/src/components/dashboard (n=70)"
-Cohesion: 0.07
-Nodes (51): blocked_ip_updates channel, session_logs channel, threat_notifications channel, metadata, ActionToast(), ActionToastProps, BlockedIpActionPanel(), BlockedIpRow (+43 more)
+Cohesion: 0.09
+Nodes (43): ActionToast(), ActionToastProps, BlockedIpRow, BlockedIpsLiveTable(), Props, RealtimeBlockedIpRow, DashboardMetricsLiveIndicator(), GlobalThreatToast() (+35 more)
 
 ### Community 2 - "backend/app/features/realtime (n=63)"
-Cohesion: 0.05
-Nodes (40): AsyncSession, get_realtime_service(), Dependencies for realtime feature., Provide a RealtimeService instance., Realtime-specific exceptions., Raised when realtime payload is not safe for frontend broadcast., RealtimePayloadValidationException, WebSocket (+32 more)
+Cohesion: 0.08
+Nodes (31): Realtime-specific exceptions., Raised when realtime payload is not safe for frontend broadcast., RealtimePayloadValidationException, broadcast_realtime_alert(), broadcast_realtime_blocked_ip(), broadcast_realtime_dashboard_metrics(), broadcast_realtime_session(), Realtime routes for websocket clients and broadcast hooks. (+23 more)
 
 ### Community 3 - "tests/unit (n=62)"
 Cohesion: 0.08
 Nodes (41): DataFrame, Path, resolve_prepared_source_files(), sanitize_prepared_chunk(), validate_prepared_header(), _compute_test_targets(), _count_labels(), _iter_clean_chunks() (+33 more)
 
 ### Community 4 - "frontend/src/components/dashboard (n=59)"
-Cohesion: 0.10
-Nodes (20): SessionSearchParams, mapBackendThreat(), ThreatReportsPage(), ThreatSearchParams, toQuery(), FilterEmptyAction(), MetricProps, SessionsFiltersForm() (+12 more)
+Cohesion: 0.14
+Nodes (16): AnalyticsPage(), RANGE_OPTIONS, OverviewCharts(), MetricProps, OverviewMetricsGrid(), SessionsFiltersForm(), Card(), CardContent() (+8 more)
 
 ### Community 5 - "backend/app/features/threats (n=54)"
-Cohesion: 0.05
-Nodes (35): get_threat_service(), AsyncSession, FastAPI dependencies for threat reports., Provide ThreatService for current request., Threat report feature exceptions., Raised when a threat record cannot be found., ThreatNotFoundException, get_threat() (+27 more)
+Cohesion: 0.24
+Nodes (6): Apply analyst response action for one threat row., respond_to_threat(), Mutation payload for analyst response actions on a threat., ThreatResponseActionRequest, FakeThreatService, ThreatResponseFlowTest
 
 ### Community 6 - "backend/smoke (n=54)"
-Cohesion: 0.07
-Nodes (43): _assert_success_envelope(), main(), API smoke check for alerts/threats listing and filters.  Usage:   python backend, run(), main(), _post_json(), Smoke test for backend block-events upsert flow., _assert_success_envelope() (+35 more)
+Cohesion: 0.05
+Nodes (59): _assert_success_envelope(), main(), API smoke check for alerts/threats listing and filters.  Usage:   python backend, run(), main(), _post_json(), Smoke test for backend block-events upsert flow., _assert_success_envelope() (+51 more)
 
 ### Community 7 - "frontend (n=54)"
-Cohesion: 0.05
-Nodes (54): CICIDS2017_TO_INTERNAL header mapping, FEATURE_COLUMNS canonical field set, Strict CICIDS2017 Dataset Validation Design, Validation Testing Coverage, Validation Contract, alerts table, block_events table, dashboard_analytics_snapshots table (+46 more)
+Cohesion: 0.06
+Nodes (42): Backend Base URL Contract, Frontend Agent Handoff, Realtime Channel Contract, REST API Hook Map, 3-Page Route Mapping, React+Vite+TanStack Query Stack Recommendation, Backend Contract (REST/WS base URLs, channels), AGENTS.md Design Rules (+34 more)
 
 ### Community 8 - "response engine (n=53)"
-Cohesion: 0.08
-Nodes (9): AutoBlocker, BlockRecordStore, FirewallAdapter, ABC, create_firewall_adapter(), LinuxFirewallAdapter, WindowsFirewallAdapter, IPActivityTracker (+1 more)
+Cohesion: 0.11
+Nodes (7): FirewallAdapter, ABC, create_firewall_adapter(), LinuxFirewallAdapter, WindowsFirewallAdapter, IPActivityTracker, IPActivityTrackerTest
 
 ### Community 9 - "tests/integration (n=51)"
-Cohesion: 0.05
-Nodes (25): app_exception_handler(), Exception, FastAPI, Request, Global exception handlers registered on the FastAPI application.  Maps exception, Hide internal details for server-side failures in production., Handle all AppException subclasses (NotFoundException, etc.)., Handle Pydantic / FastAPI request validation errors. (+17 more)
+Cohesion: 0.09
+Nodes (8): AuthCookieFlowTest, _DummyAsyncOAuth2Client, _DummyEmailNotValidError, _DummyPasswordHasher, FakeAuthService, Request, ValueError, _request_with_headers()
 
 ### Community 10 - "backend/app/email (n=49)"
-Cohesion: 0.06
-Nodes (38): get_settings(), Application configuration loaded from environment variables.  Uses pydantic-sett, Return cached application settings singleton., EmailDeliveryError, EmailDeliveryPermanentError, Exception, Email delivery exceptions.  Used to separate permanent provider/configuration pr, Base class for outbound email delivery failures. (+30 more)
+Cohesion: 0.08
+Nodes (30): get_settings(), Application configuration loaded from environment variables.  Uses pydantic-sett, Return cached application settings singleton., get_email_provider(), Return a configured EmailProvider instance for the current settings., EmailMessage, EmailProvider, Protocol (+22 more)
 
 ### Community 11 - "frontend/src/lib/backend (n=49)"
-Cohesion: 0.09
-Nodes (45): dashboard_metrics channel, Duplicated useDashboardRealtime Subscriptions Issue, Dashboard WebSocket Partial Push Update Issue, HealthPage(), ApiKey, OverviewCharts(), OverviewChartsProps, OverviewMetricsGrid() (+37 more)
+Cohesion: 0.10
+Nodes (41): HealthPage(), OverviewPage(), DashboardDistributionPoint, DashboardModelMetrics, DashboardNetworkThreatRollupPoint, DashboardSummary, DashboardTimelinePoint, DashboardTopDestinationPortPoint (+33 more)
 
 ### Community 12 - "backend/app/features/geolocation (n=48)"
 Cohesion: 0.06
 Nodes (26): AsyncClient, LocationDto, IpLocationPermanentError, IpLocationProviderError, IpLocationProviderNotFoundError, IpLocationTransientError, Exception, Permanent failure — do NOT retry.      Raised on: 4xx responses (bad IP, rate-li (+18 more)
 
 ### Community 13 - "frontend (n=42)"
-Cohesion: 0.05
-Nodes (41): babel-plugin-react-compiler, drizzle-kit, eslint, eslint-config-next, devDependencies, babel-plugin-react-compiler, drizzle-kit, eslint (+33 more)
+Cohesion: 0.07
+Nodes (27): babel-plugin-react-compiler, drizzle-kit, eslint, eslint-config-next, devDependencies, babel-plugin-react-compiler, drizzle-kit, eslint (+19 more)
 
 ### Community 14 - "frontend/src/components/ui (n=42)"
-Cohesion: 0.09
-Nodes (35): CardAction(), CardFooter(), DialogFooter(), DialogOverlay(), Empty(), EmptyContent(), EmptyDescription(), EmptyHeader() (+27 more)
+Cohesion: 0.06
+Nodes (59): Alert(), AlertAction(), AlertDescription(), AlertTitle(), alertVariants, CardAction(), CardFooter(), Empty() (+51 more)
 
 ### Community 15 - "backend/app/features/auth (n=39)"
-Cohesion: 0.07
-Nodes (24): Request, Shared auth guard for trusted service-to-service requests., Require the configured internal service token when enabled., require_internal_service_auth(), Application settings sourced from environment variables and .env file., Settings, GitHubOAuthProvider, GitHub OAuth provider adapter.  Implements the OAuthProvider protocol for GitHub (+16 more)
+Cohesion: 0.08
+Nodes (21): Application settings sourced from environment variables and .env file., Refuse to boot in production without a properly strong shared secret.          T, Settings, GitHubOAuthProvider, GitHub OAuth provider adapter.  Implements the OAuthProvider protocol for GitHub, GitHub OAuth 2.0 provider., get_oauth_provider(), list_oauth_providers() (+13 more)
 
 ### Community 16 - "backend/app/features/alerts (n=38)"
 Cohesion: 0.07
@@ -344,128 +531,128 @@ Cohesion: 0.06
 Nodes (35): compilerOptions, allowJs, baseUrl, esModuleInterop, incremental, isolatedModules, jsx, lib (+27 more)
 
 ### Community 18 - "backend/app/features/dashboard (n=35)"
-Cohesion: 0.11
-Nodes (33): get_attack_distribution(), get_audit_history(), get_block_actions_over_time(), get_dashboard_summary(), get_incident_report(), get_incidents(), get_model_metrics(), get_network_threat_rollups() (+25 more)
+Cohesion: 0.10
+Nodes (34): get_attack_distribution(), get_audit_history(), get_block_actions_over_time(), get_dashboard_summary(), get_incident_detail(), get_incident_report(), get_incidents(), get_model_metrics() (+26 more)
 
 ### Community 19 - "ml/models (n=35)"
 Cohesion: 0.09
-Nodes (11): MetricsEvaluator, Any, SklearnModel, Any, XGBoostModel, train(), _load_dataset(), _prepare_live_compatible_dataset() (+3 more)
+Nodes (6): MetricsEvaluator, Any, SklearnModel, Any, XGBoostModel, train()
 
 ### Community 20 - "backend/app/features/auth (n=34)"
-Cohesion: 0.09
-Nodes (22): AppException, Exception, Base application exception — maps to HTTP 500 by default., EmailAlreadyExistsException, EmailNotVerifiedException, EmailVerificationException, InvalidCredentialsException, OAuthProviderNotConfiguredException (+14 more)
+Cohesion: 0.07
+Nodes (31): app_exception_handler(), Exception, FastAPI, Request, Global exception handlers registered on the FastAPI application.  Maps exception, Hide internal details for server-side failures in production., Handle all AppException subclasses (NotFoundException, etc.)., Handle Pydantic / FastAPI request validation errors. (+23 more)
 
 ### Community 21 - "backend/app/features/api keys (n=34)"
-Cohesion: 0.09
-Nodes (28): APIKeyNotFoundException, Raised when an API key does not exist or is not owned by the user., create_api_key(), delete_api_key(), get_api_key(), list_api_keys(), User, FastAPI routes for API key management.  All endpoints require an authenticated s (+20 more)
+Cohesion: 0.22
+Nodes (12): delete_api_key(), get_api_key(), list_api_keys(), User, FastAPI routes for API key management.  All endpoints require an authenticated s, Update name, description, or active status of an API key.      The key value its, Permanently delete an API key., List all API keys for the authenticated user.      Supports offset-based paginat (+4 more)
 
 ### Community 22 - "backend/app/features/auth (n=33)"
-Cohesion: 0.09
-Nodes (24): get_client_ip(), Request, Get the client IP from a FastAPI request.     In development, replace local IPs, clear_session_cookie(), Attach the session token as an HttpOnly cookie., Remove the session cookie from the response., set_session_cookie(), login() (+16 more)
+Cohesion: 0.07
+Nodes (29): get_client_ip(), Request, Get the client IP from a FastAPI request.     In development, replace local IPs, Attach the session token as an HttpOnly cookie., set_session_cookie(), login(), me(), oauth_callback() (+21 more)
 
 ### Community 23 - "backend/app/features/user sessions (n=32)"
-Cohesion: 0.09
-Nodes (14): Database-backed user session., Session, Encapsulates database operations for Session entities., Revoke all active sessions for a user.          Returns the number of sessions r, SessionRepository, NotificationRepository, AsyncSession, Data access for notification read-state updates. (+6 more)
+Cohesion: 0.13
+Nodes (10): Database-backed user session., Session, Encapsulates database operations for Session entities., Revoke all active sessions for a user.          Returns the number of sessions r, SessionRepository, AsyncSession, datetime, Revoke every non-revoked session for the user. (+2 more)
 
 ### Community 24 - "backend/app/features/dashboard (n=31)"
-Cohesion: 0.12
-Nodes (10): DatabaseException, Database-level error — maps to HTTP 500., DashboardRepository, AsyncSession, Encapsulates aggregate queries for dashboard analytics., EngineTelemetrySnapshot, Database model for persisted engine telemetry snapshots., Durable runtime telemetry snapshot used by live health views. (+2 more)
+Cohesion: 0.07
+Nodes (22): DatabaseException, Database-level error — maps to HTTP 500., Alert, Database model for alerts., Deduplicated alert record derived from IDS events., AlertRepository, AsyncSession, Encapsulates database operations for alerts. (+14 more)
 
 ### Community 25 - "backend/app/features/alerts (n=31)"
-Cohesion: 0.08
-Nodes (16): Alert, Database model for alerts., Deduplicated alert record derived from IDS events., AlertRepository, AsyncSession, Data-access layer for alerts., Encapsulates database operations for alerts., List alerts with pagination and optional filters. (+8 more)
+Cohesion: 0.21
+Nodes (10): PaginatedThreatsResponse, BaseModel, Schemas for threat report endpoints., Threat report response model., Paginated threat listing payload., Response payload for threat response action mutation., Filter options for threat report listing., ThreatFilters (+2 more)
 
 ### Community 26 - "backend/app/features/auth (n=31)"
-Cohesion: 0.11
-Nodes (16): OAuthAuthenticationException, Raised when OAuth callback handling fails., AuthService, User, Authenticate a user with email and password., Re-dispatch a verification email for an unverified account.          Silently su, Consume a verification token and mark the user's email as verified.          Ret, Build the OAuth authorization redirect URL for a provider. (+8 more)
+Cohesion: 0.08
+Nodes (24): OAuthAuthenticationException, Raised when OAuth callback handling fails., hash_password(), Password hashing utilities using Argon2id., Hash a plaintext password with Argon2id., Verify a plaintext password against a stored Argon2 hash., verify_password(), AuthService (+16 more)
 
 ### Community 27 - "frontend/src/components/dashboard (n=31)"
 Cohesion: 0.16
-Nodes (21): Pages Labeled Live But Not Truly Live Issue, RealtimeStatusBadge Separate Socket Issue, Logs Page, OverviewPage(), maskIp(), TrafficPage(), ApiKeysManager(), OverviewTopLists() (+13 more)
+Nodes (21): maskIp(), TrafficPage(), OverviewChartsProps, OverviewTopLists(), TopListsProps, getBadgeClass(), getLabel(), RealtimeStatusBadge() (+13 more)
 
 ### Community 28 - "tests/integration (n=31)"
-Cohesion: 0.06
-Nodes (11): _DummyAsyncOAuth2Client, _DummyEmailNotValidError, _DummyPasswordHasher, FakeAlertService, FakeBlockEventService, FakeEngineCommandService, FakeEngineTelemetryService, FakeIDSEventService (+3 more)
+Cohesion: 0.10
+Nodes (9): _DummyEmailNotValidError, _DummyPasswordHasher, FakeAlertService, FakeBlockEventService, FakeEngineTelemetryService, FakeIDSEventService, FakeNetworkSessionService, FakeSQLInjectionService (+1 more)
 
 ### Community 29 - "backend/app/core (n=30)"
-Cohesion: 0.08
-Nodes (17): DevelopmentFormatter, JSONFormatter, Structured logging configuration.  In production: JSON-formatted logs with corre, Formats log records as single-line JSON objects suitable for log     aggregation, Human-readable formatter for local development., Configure application-wide logging.      Sets up three loggers:     - app: appli, setup_logging(), Authentication business logic. (+9 more)
+Cohesion: 0.06
+Nodes (20): DevelopmentFormatter, JSONFormatter, Structured logging configuration.  In production: JSON-formatted logs with corre, Formats log records as single-line JSON objects suitable for log     aggregation, Human-readable formatter for local development., Configure application-wide logging.      Sets up three loggers:     - app: appli, setup_logging(), Email provider factory.  Reads EMAIL_PROVIDER from settings and returns the matc (+12 more)
 
 ### Community 30 - "backend/app/features/user sessions (n=29)"
-Cohesion: 0.10
-Nodes (20): get_user_session_service(), AsyncSession, Provide a UserSessionService instance for the current request., Raised when a session does not exist or is not owned by the user., UserSessionNotFoundException, list_user_sessions(), AuthSession, Response (+12 more)
+Cohesion: 0.13
+Nodes (9): get_user_session_service(), AsyncSession, Provide a UserSessionService instance for the current request., Raised when a session does not exist or is not owned by the user., UserSessionNotFoundException, RevokeSessionsResponse, AsyncSession, Service layer for listing and revoking authenticated user sessions. (+1 more)
 
 ### Community 31 - "frontend (n=29)"
-Cohesion: 0.07
-Nodes (29): @base-ui/react, class-variance-authority, clsx, dotenv, drizzle-orm, dependencies, @base-ui/react, class-variance-authority (+21 more)
+Cohesion: 0.06
+Nodes (35): @base-ui/react, class-variance-authority, clsx, date-fns, dotenv, drizzle-orm, dependencies, @base-ui/react (+27 more)
 
 ### Community 32 - "tests/unit (n=29)"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (12): main(), normalize_cicids2017_label(), prepare_cicids2017_features(), DataFrame, _load_dataset(), _prepare_live_compatible_dataset(), DataFrame, Path (+4 more)
 
 ### Community 33 - "frontend/src/lib/db (n=29)"
-Cohesion: 0.09
-Nodes (23): extractStrings(), POST(), scanFields(), SQL_INJECTION_PATTERNS, SQLInjectionResponse, validateApiKey(), AnalyticsSnapshot, analyticsSnapshots (+15 more)
+Cohesion: 0.08
+Nodes (26): extractStrings(), POST(), scanFields(), SQL_INJECTION_PATTERNS, SQLInjectionResponse, validateApiKey(), requestBackendJson(), SqlInjectionDecisionPayload (+18 more)
 
 ### Community 34 - "backend (n=27)"
 Cohesion: 0.16
 Nodes (26): ArgumentParser, build_alembic_command(), build_parser(), generate_migration(), main(), migrate_current(), migrate_downgrade(), migrate_history() (+18 more)
 
 ### Community 35 - "frontend/src/lib/backend (n=27)"
-Cohesion: 0.17
-Nodes (21): ApiKeysPage(), addApiKey(), removeApiKey(), renameApiKey(), ApiKeyCreateData, ApiKeyListData, BackendApiKey, BackendApiKeyCreated (+13 more)
+Cohesion: 0.11
+Nodes (33): fallbackActivity(), GET(), mapActivity(), ApiKeysPage(), ApiKeysManager(), addApiKey(), editApiKey(), listApiKeysAction() (+25 more)
 
 ### Community 36 - "packet capture/forwarding (n=27)"
-Cohesion: 0.12
-Nodes (5): FastAPIBlockEventForwarder, FastAPIIDSEventForwarder, FastAPISessionUpdateForwarder, SnifferService, PacketFilters
+Cohesion: 0.09
+Nodes (13): InternalRequestSigner, path_with_query(), Engine-side HMAC request signing for internal-service-auth-protected routes.  Mi, Derive ``path`` (plus ``"?"+query`` if present) from a full URL.      Matches th, FastAPIAlertForwarder, FastAPIBlockEventForwarder, FastAPIIDSEventForwarder, FastAPISessionUpdateForwarder (+5 more)
 
 ### Community 37 - "backend/app/features/sql injection (n=26)"
-Cohesion: 0.11
-Nodes (19): Base, CUIDMixin, SQLAlchemy declarative base and reusable model mixins., TimestampMixin, APIKeyEnvironment, str, Notification, NotificationType (+11 more)
+Cohesion: 0.09
+Nodes (20): Base, CUIDMixin, SQLAlchemy declarative base and reusable model mixins., TimestampMixin, APIKeyEnvironment, str, Application user with optional email/password credentials., User (+12 more)
 
 ### Community 38 - "backend/app/features/auth (n=26)"
-Cohesion: 0.10
-Nodes (13): OAuthAccount, SQLAlchemy models for authentication., Application user with optional email/password credentials., Links a user to an external OAuth provider identity., User, OAuthAccountRepository, AsyncSession, User (+5 more)
+Cohesion: 0.11
+Nodes (11): OAuthAccount, SQLAlchemy models for authentication., Links a user to an external OAuth provider identity., OAuthAccountRepository, AsyncSession, User, Data-access layer for authentication entities., Encapsulates database operations for User entities. (+3 more)
 
 ### Community 39 - "frontend/src/lib/backend (n=26)"
-Cohesion: 0.13
-Nodes (18): GET(), GET(), markAllRead(), markOneRead(), fetchLogsFromBackend(), FetchLogsParams, toArray(), markAllNotificationsReadOnBackend() (+10 more)
+Cohesion: 0.60
+Nodes (4): markAllRead(), markOneRead(), markAllNotificationsReadOnBackend(), markNotificationReadOnBackend()
 
 ### Community 40 - "frontend/src/lib/backend (n=26)"
-Cohesion: 0.15
-Nodes (21): GET(), mapBackendSessionDetail(), mapBackendSession(), SessionLogsPage(), respondSessionAction(), buildJsonHeaders(), applySessionResponseAction(), fetchSessionDetailFromBackend() (+13 more)
+Cohesion: 0.10
+Nodes (32): GET(), GET(), GET(), mapBackendSessionDetail(), mapBackendSession(), SessionLogsPage(), SessionSearchParams, respondSessionAction() (+24 more)
 
 ### Community 41 - "tests/unit (n=26)"
-Cohesion: 0.17
-Nodes (9): ProtocolType, Enum, PacketParser, Queue, PacketParserContractTest, PacketParserTest, PacketParserUnknownProtocolTest, ProtocolMappingTest (+1 more)
+Cohesion: 0.19
+Nodes (8): ProtocolType, Enum, PacketParser, PacketParserContractTest, PacketParserTest, PacketParserUnknownProtocolTest, ProtocolMappingTest, ProtocolUnknownValueTest
 
 ### Community 42 - "backend/app/common (n=24)"
 Cohesion: 0.11
 Nodes (17): _build_meta(), create_error_response(), create_response(), Any, Response wrapper utilities.  Helper functions that build unified JSON responses, Build the meta block with current timestamp and request ID., Build a unified success response.      Args:         data: The response payload, Build a unified error response.      Args:         message: Human-readable error (+9 more)
 
 ### Community 43 - "backend/app/features/engine telemetry (n=24)"
-Cohesion: 0.12
-Nodes (17): get_history(), ingest_engine_telemetry(), Routes for IDS engine telemetry ingestion., EngineTelemetryIngestRequest, EngineTelemetryIngestResponse, EngineTelemetrySnapshotResponse, NetworkExchange, PaginatedEngineTelemetryHistoryResponse (+9 more)
+Cohesion: 0.09
+Nodes (21): get_history(), get_engine_telemetry_service(), AsyncSession, Dependencies for IDS engine telemetry., ingest_engine_telemetry(), Routes for IDS engine telemetry ingestion., EngineTelemetryIngestRequest, EngineTelemetryIngestResponse (+13 more)
 
 ### Community 44 - "backend/app/features/ids events (n=24)"
 Cohesion: 0.12
 Nodes (20): ingest_ids_event(), list_ids_events(), datetime, User, FastAPI routes for IDS event ingestion., List IDS events with pagination and optional filters., Ingest and persist a normalized IDS event envelope., IDSEventListFilters (+12 more)
 
 ### Community 45 - "docs (n=24)"
-Cohesion: 0.12
-Nodes (18): Backend-First Fetch with DB Fallback Pattern, SmartIDS Realtime Transport Map, Hybrid Transport Model, On-Demand Fetch Transport, Polling Transport, Server-Rendered Fetch Transport, WebSocket Transport, BlockedIpSearchParams (+10 more)
+Cohesion: 0.15
+Nodes (14): BlockedIpSearchParams, BlockedIpsPage(), mapBackendBlockedIp(), BlockedIpActionPanel(), BlockedIpsFiltersForm(), InlineHelp(), InlineHelpProps, ThreatFiltersForm() (+6 more)
 
 ### Community 46 - "ml/training (n=23)"
-Cohesion: 0.22
-Nodes (21): live_prediction_input.example.json, live_prediction_output.example.json, activate_staged_directory(), _build_model(), build_model_bundle(), _csv_row_count(), _evaluation_report(), _load_dataset() (+13 more)
+Cohesion: 0.26
+Nodes (19): activate_staged_directory(), _build_model(), build_model_bundle(), _csv_row_count(), _evaluation_report(), _load_dataset(), main(), ModelBuildResult (+11 more)
 
 ### Community 47 - "tests/unit (n=23)"
 Cohesion: 0.20
 Nodes (12): _label_distribution(), main(), prepare_dataset(), PreparedDataset, DataFrame, Path, _resolve_source_files(), _sha256() (+4 more)
 
 ### Community 48 - "backend/app/features/auth (n=22)"
-Cohesion: 0.10
-Nodes (14): forgot_password(), Initiate the password reset flow.      Always returns 202 regardless of whether, resend_verification_email(), AuthResponse, ForgotPasswordRequest, Pydantic schemas for the auth feature., Schema for email/password registration., Response payload for login and registration. (+6 more)
+Cohesion: 0.29
+Nodes (5): forgot_password(), Initiate the password reset flow.      Always returns 202 regardless of whether, ForgotPasswordRequest, Request body for initiating a password reset., ForgotPasswordValidationTest
 
 ### Community 49 - "backend/app/features/sql injection (n=22)"
 Cohesion: 0.10
@@ -475,36 +662,32 @@ Nodes (16): get_sql_injection_service(), AsyncSession, FastAPI dependencies for 
 Cohesion: 0.09
 Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent (+13 more)
 
-### Community 51 - "frontend/src/lib/realtime (n=22)"
-Cohesion: 0.15
-Nodes (10): AnalyticsPage(), RANGE_OPTIONS, DashboardEntrance(), DashboardEntranceProps, useDashboardMotionMode(), Skeleton(), mapTrafficSeriesToBucketCounts(), mapTrafficSeriesToThreatTimeline() (+2 more)
-
 ### Community 52 - "backend/app/features/api keys (n=21)"
 Cohesion: 0.12
 Nodes (18): AsyncSession, Require a valid API key for detect requests., verify_api_token(), generate_api_key(), _get_hmac_salt(), hash_api_secret(), parse_api_key(), Cryptographically secure API key generation and hashing utilities.  Design: - Ke (+10 more)
 
 ### Community 53 - "tests/unit (n=21)"
-Cohesion: 0.13
-Nodes (10): generate_session_token(), hash_session_token(), Session token generation and hashing utilities., Generate a cryptographically secure session token., Return a SHA-256 hex digest of the raw session token., AuthServiceTest, FakeOAuthAccountRepository, FakeRedis (+2 more)
+Cohesion: 0.11
+Nodes (11): Revoke the session associated with the given token., generate_session_token(), hash_session_token(), Session token generation and hashing utilities., Generate a cryptographically secure session token., Return a SHA-256 hex digest of the raw session token., AuthServiceTest, FakeOAuthAccountRepository (+3 more)
 
 ### Community 54 - "backend/app/features/block events (n=21)"
 Cohesion: 0.15
 Nodes (7): BlockEvent, Database model for block/watchlist events., BlockEventRepository, AsyncSession, AsyncSession, BlockedIPRepository, AsyncSession
 
 ### Community 55 - "backend/app/features/dashboard (n=21)"
-Cohesion: 0.14
-Nodes (4): get_incident_detail(), DashboardIncidentDetailResponse, DashboardService, Provides dashboard aggregate analytics.
+Cohesion: 0.11
+Nodes (4): DashboardIncidentDetailResponse, DashboardService, AsyncSession, Provides dashboard aggregate analytics.
 
 ### Community 56 - "frontend/src/lib/backend (n=21)"
-Cohesion: 0.18
-Nodes (17): GET(), mapBackendDetail(), mapFallbackDetail(), fetchThreatDetailFromBackend(), fetchThreatsFromBackend(), FetchThreatsParams, toArray(), toThreat() (+9 more)
+Cohesion: 0.11
+Nodes (29): GET(), mapBackendDetail(), mapFallbackDetail(), mapBackendThreat(), ThreatReportsPage(), ThreatSearchParams, toQuery(), FilterEmptyAction() (+21 more)
 
 ### Community 57 - "tests/unit (n=21)"
-Cohesion: 0.23
-Nodes (11): _label_distribution(), main(), prepare_dataset(), PreparedDataset, DataFrame, Path, _resolve_source_files(), _sha256() (+3 more)
+Cohesion: 0.22
+Nodes (12): _label_distribution(), main(), prepare_dataset(), PreparedDataset, DataFrame, Path, _resolve_source_files(), _sha256() (+4 more)
 
 ### Community 58 - "backend/app/features/api keys (n=20)"
-Cohesion: 0.12
+Cohesion: 0.13
 Nodes (8): APIKey, User-scoped API key with one-way hashed secret., APIKeyRepository, AsyncSession, Data-access layer for API key entities., Encapsulates database operations for APIKey entities., Fast lookup for authentication (core auth path)., AsyncSession
 
 ### Community 59 - "backend/app/features/ip control state (n=20)"
@@ -512,27 +695,27 @@ Cohesion: 0.12
 Nodes (10): IPControlState, Database model for current controlled-IP state., Current authoritative state for a controlled IP., IPControlStateRepository, AsyncSession, Data-access helpers for current controlled-IP state., IPControlStateService, AsyncSession (+2 more)
 
 ### Community 60 - "traffic engine/session builder (n=20)"
-Cohesion: 0.19
-Nodes (3): SessionFeatureExtractor, RuntimeSessionFeatureTest, SessionBuilder
+Cohesion: 0.04
+Nodes (49): 1. Review Generated SQL, 2. Test Migrations, 3. Keep Migrations Small, 4. Use Transactions, 5. Handle Downtime, 6. Version Control, 7. CI Validation, Adding a Column (+41 more)
 
 ### Community 61 - "frontend/src/app/api (n=20)"
-Cohesion: 0.17
-Nodes (12): POST(), POST(), POST(), GET(), POST(), POST(), POST(), proxyAuthGet() (+4 more)
+Cohesion: 0.14
+Nodes (17): POST(), POST(), POST(), GET(), POST(), DELETE(), GET(), DELETE() (+9 more)
 
 ### Community 62 - "frontend/src/components/dashboard (n=20)"
-Cohesion: 0.15
-Nodes (13): DashboardLayout(), DashboardMotionContext, DashboardMotionMode, DashboardMotionProvider(), links, MobileSidebarMenu(), getInitials(), UserSessionMenu() (+5 more)
+Cohesion: 0.11
+Nodes (18): DashboardLayout(), HomePage(), DashboardEntrance(), DashboardEntranceProps, DashboardMotionContext, DashboardMotionMode, DashboardMotionProvider(), useDashboardMotionMode() (+10 more)
 
 ### Community 63 - "packet capture/telemetry (n=20)"
-Cohesion: 0.19
-Nodes (6): PacketData, EngineTelemetryCollector, Queue, _safe_qsize(), _session_exchange(), EngineTelemetryCollectorTest
+Cohesion: 0.11
+Nodes (11): _idle_timeout_case(), main(), _max_duration_case(), Packet, Targeted smoke for session finalization reasons.  Validates that SessionBuilder, EngineTelemetryCollector, Queue, _safe_qsize() (+3 more)
 
 ### Community 64 - "backend/app/features/blocked ips (n=19)"
-Cohesion: 0.15
-Nodes (10): move_ip_to_watchlist(), Queue manual watchlist command for IDS engine., BlockedIPActivityItem, BlockedIPItem, ManualBlockRequest, ManualWatchlistRequest, BaseModel, Schemas for blocked/watchlisted IP APIs. (+2 more)
+Cohesion: 0.28
+Nodes (5): BlockedIPActivityItem, BlockedIPItem, ManualBlockRequest, BaseModel, Schemas for blocked/watchlisted IP APIs.
 
 ### Community 65 - "backend/app/features/engine commands (n=19)"
-Cohesion: 0.19
+Cohesion: 0.17
 Nodes (12): acknowledge_engine_command(), create_engine_command(), poll_engine_commands(), Routes for IDS engine command polling and acknowledgements., EngineCommandAckRequest, EngineCommandCreateRequest, EngineCommandPollResponse, EngineCommandResponse (+4 more)
 
 ### Community 66 - "backend/app/features/notifications (n=19)"
@@ -540,36 +723,36 @@ Cohesion: 0.12
 Nodes (13): get_notification_service(), AsyncSession, FastAPI dependencies for notifications., Provide NotificationService instance for the current request., mark_all_notifications_read(), mark_notification_read(), User, Routes for notification read-state updates. (+5 more)
 
 ### Community 67 - "docs/superpowers (n=19)"
-Cohesion: 0.18
-Nodes (17): DecisionTree Secondary Predictor, FastAPI Backend, FeatureStore, Hybrid Capture/Processing Architecture Pattern, ResponsePolicy / AutoBlocker, Runtime Mode Switch (single_process vs hybrid), RuntimePublishers (background publisher factory), SessionBuilder (single session-state owner) (+9 more)
+Cohesion: 0.04
+Nodes (46): Asynchronous I/O, Autovacuum Tuning, Basic Setup, Checkpoints, Command-Specific Policies, Configuration, Connection Info, Data Checksums by Default (+38 more)
 
 ### Community 68 - "tests/unit (n=19)"
-Cohesion: 0.24
-Nodes (7): main(), normalize_cicids2018_label(), coerce_cicids2018_features(), prepare_cicids2018_features(), DataFrame, CICIDS2018ValidationTest, DataFrame
+Cohesion: 0.19
+Nodes (11): main(), normalize_cicids2018_label(), prepare_cicids2018_features(), DataFrame, _load_dataset(), _prepare_live_compatible_dataset(), DataFrame, Path (+3 more)
 
 ### Community 69 - "backend/app/common (n=18)"
-Cohesion: 0.14
-Nodes (10): NotFoundException, Any, Base exception hierarchy for the application.  All application-level exceptions, Resource not found — maps to HTTP 404., IDSEventNotFoundException, InvalidIDSEventPayloadException, Any, IDS-events-specific exceptions. (+2 more)
+Cohesion: 0.15
+Nodes (9): NotFoundException, Any, Base exception hierarchy for the application.  All application-level exceptions, Resource not found — maps to HTTP 404., A required backing service (e.g. Redis) is unreachable — maps to HTTP 503., ServiceUnavailableException, AlertNotFoundException, Alert-specific exceptions. (+1 more)
 
 ### Community 70 - "backend/app/engine (n=18)"
 Cohesion: 0.20
 Nodes (17): aggregate_decision(), _calculate_entropy(), _collapse_obfuscated_words(), _compute_benign_reductions(), _contains_fullwidth(), _decode_js_unicode_escapes(), detect_xss(), DetectionResult (+9 more)
 
 ### Community 71 - "backend/app/features/auth (n=18)"
-Cohesion: 0.14
-Nodes (15): hash_password(), Password hashing utilities using Argon2id., Hash a plaintext password with Argon2id., Verify a plaintext password against a stored Argon2 hash., verify_password(), generate_reset_token(), Redis, URLSafeTimedSerializer (+7 more)
+Cohesion: 0.29
+Nodes (9): generate_reset_token(), Redis, URLSafeTimedSerializer, Password reset token utilities.  Design ------ - Tokens are HMAC-signed payloads, Return a signed, time-limited, single-use password reset token.      The ``jti``, Validate a password reset token and atomically mark it as consumed.      Uses Re, _serializer(), _token_hash() (+1 more)
 
 ### Community 72 - "backend/app/features/ids events (n=18)"
-Cohesion: 0.13
-Nodes (9): IDSEvent, Database model for IDS events., Normalized IDS event persisted for query and alerting flows., IDSEventRepository, AsyncSession, Data-access layer for IDS events., Encapsulates database operations for IDS events., List IDS events with pagination and optional filters. (+1 more)
+Cohesion: 0.16
+Nodes (8): IDSEvent, Database model for IDS events., Normalized IDS event persisted for query and alerting flows., IDSEventRepository, AsyncSession, Data-access layer for IDS events., Encapsulates database operations for IDS events., List IDS events with pagination and optional filters.
 
 ### Community 73 - "docs/superpowers (n=18)"
-Cohesion: 0.22
-Nodes (18): ml.training.build_cicids2017_model command, cicids2017_dataset_metadata.json, CICIDS2017 Dataset Preparation Command, cicids2017_test.csv, CICIDS2017_TO_INTERNAL column mapping, cicids2017_train.csv, CICIDS2017Loader, FEATURE_COLUMNS canonical live-compatible feature contract (+10 more)
+Cohesion: 0.05
+Nodes (44): Arrays, Boolean, Check Constraints, Column Types, Composite Foreign Key, Composite Index, Composite Primary Key, Constraints (+36 more)
 
 ### Community 74 - "packet capture/utils (n=18)"
-Cohesion: 0.19
-Nodes (5): BackgroundPublisher, IDSLogger, JsonFormatter, log_event(), BackgroundPublisherTest
+Cohesion: 0.07
+Nodes (10): BackgroundPublisher, Persistent engine<->backend WebSocket client (Workstream 6c).  Replaces the 1.5s, SnifferService, LiveSniffer, Queue, IDSLogger, JsonFormatter, PacketFilters (+2 more)
 
 ### Community 75 - "backend/app/detection (n=17)"
 Cohesion: 0.18
@@ -580,32 +763,36 @@ Cohesion: 0.13
 Nodes (6): BlockEventRealtimePersistenceTest, FakeAnalyticsRollupService, FakeBlockEvent, FakeDashboardService, FakeIPControlStateService, FakeRealtimeService
 
 ### Community 77 - "backend/app/features/ids events (n=16)"
-Cohesion: 0.23
-Nodes (6): IDSEventIngestRequest, Inbound IDS event envelope from ML/runtime producers., IDSEventService, Handles IDS event validation and persistence orchestration., Persist an IDS event if it does not already exist.          Returns:, Broadcast frontend-safe payload without breaking ingestion on failures.
+Cohesion: 0.20
+Nodes (7): IDSEventIngestRequest, Inbound IDS event envelope from ML/runtime producers., IDSEventService, Push threats-over-time/attack-distribution/network-threat-rollups updates., Handles IDS event validation and persistence orchestration., Persist an IDS event if it does not already exist.          Returns:, Broadcast frontend-safe payload without breaking ingestion on failures.
 
 ### Community 78 - "tests/unit (n=16)"
-Cohesion: 0.19
-Nodes (7): CICIDS2017Loader, DataFrame, ndarray, CICIDS2017_TO_INTERNAL, FEATURE_COLUMNS, CICIDS2017LoaderFeaturesTest, DataFrame
+Cohesion: 0.21
+Nodes (5): CICIDS2017Loader, DataFrame, ndarray, CICIDS2017LoaderFeaturesTest, DataFrame
 
 ### Community 79 - "response engine (n=16)"
-Cohesion: 0.20
-Nodes (6): FastAPIAlertForwarder, ResponsePolicy, AlertForwarderTest, _load_project_env(), main(), _prepare_rows()
+Cohesion: 0.18
+Nodes (5): AutoBlocker, BlockRecordStore, _load_project_env(), main(), _prepare_rows()
+
+### Community 80 - "packet capture/processor (n=16)"
+Cohesion: 0.25
+Nodes (4): PacketProcessor, Aggregate secondary-model dispatcher queue stats for both predictors.          E, log_event(), SessionKey
 
 ### Community 81 - "response engine (n=16)"
-Cohesion: 0.25
-Nodes (4): ProcessedCommandStore, EngineCommandDedupeTest, FakeAutoBlocker, make_processor()
+Cohesion: 0.10
+Nodes (8): FeatureStore, Publishes secondary (DecisionTree) shadow predictions to the append-only     ids, SecondaryShadowEventPublisher, ResponsePolicy, ProcessedCommandStore, EngineCommandDedupeTest, FakeAutoBlocker, make_processor()
 
 ### Community 82 - "tests/integration (n=16)"
-Cohesion: 0.17
-Nodes (5): DashboardMetricsFlowTest, FakeBlockedIPRepository, FakeDashboardService, FakeEngineCommandService, FakeNetworkSession
+Cohesion: 0.12
+Nodes (6): DashboardMetricsFlowTest, FakeBlockedIPRepository, FakeDashboardService, FakeEngineCommandService, FakeNetworkSession, FakeRealtimeService
 
 ### Community 83 - "tests/unit (n=16)"
-Cohesion: 0.16
-Nodes (5): FakeDashboardService, FakeNetworkSession, FakeTelemetryRepository, FakeTelemetrySnapshot, LiveDashboardServicesTest
+Cohesion: 0.07
+Nodes (10): FakeAlertService, FakeAnalyticsRollupService, FakeDashboardService, FakeIDSEvent, FakeIDSEventRepository, FakeNetworkSession, FakeRealtimeService, FakeTelemetryRepository (+2 more)
 
 ### Community 84 - "tests/unit (n=16)"
-Cohesion: 0.15
-Nodes (4): FakeAlertService, FakeAnalyticsRollupService, FakeIDSEvent, FakeIDSEventRepository
+Cohesion: 0.08
+Nodes (25): EngineWSConnectionManager, WebSocket, Connection manager for the engine<->backend command WebSocket.  Deliberately sep, Tracks active engine websocket connection(s) and pushes commands., Push a newly-created command to any connected engine(s).          Best-effort: t, _authenticate(), engine_ws(), _handle_command_ack() (+17 more)
 
 ### Community 85 - "backend/app/features/analytics rollups (n=15)"
 Cohesion: 0.24
@@ -620,32 +807,32 @@ Cohesion: 0.15
 Nodes (8): IpLocation, SQLAlchemy model for persisted IP location records., Resolved geolocation record for a user's session IP address.      One record is, LocationRepository, AsyncSession, Persist a new IpLocation record.          Uses INSERT … ON CONFLICT DO NOTHING s, Return the location record for *session_id*, or None if absent., Return all location records that share *ip*, ordered most recent first.
 
 ### Community 88 - "backend/app/features/sessions (n=15)"
-Cohesion: 0.22
-Nodes (8): Create or update a network session from IDS engine data., upsert_network_session(), NetworkSessionUpsertRequest, Create/update payload from IDS engine session events., NetworkSessionService, Handles create/update/list operations for network sessions., Create a network session if missing, otherwise update it., Return a session by external session_id.
+Cohesion: 0.14
+Nodes (11): get_network_session_service(), AsyncSession, FastAPI dependencies for network sessions feature., Provide NetworkSessionService for current request., NetworkSessionUpsertRequest, Create/update payload from IDS engine session events., NetworkSessionService, AsyncSession (+3 more)
 
 ### Community 89 - "tests/unit (n=15)"
 Cohesion: 0.32
 Nodes (3): BuildCICIDS2017ModelTest, DataFrame, Path
 
 ### Community 90 - "backend/app/common (n=14)"
-Cohesion: 0.24
-Nodes (12): Validation error — maps to HTTP 422., ValidationException, CreatedAtCursor, decode_created_at_cursor(), encode_created_at_cursor(), parse_created_at_sort(), datetime, Enum (+4 more)
+Cohesion: 0.27
+Nodes (11): Validation error — maps to HTTP 422., ValidationException, CreatedAtCursor, decode_created_at_cursor(), encode_created_at_cursor(), parse_created_at_sort(), datetime, Enum (+3 more)
 
 ### Community 91 - "backend/app/engine (n=14)"
 Cohesion: 0.20
 Nodes (9): Classification, ABC, Enum, Abstract base class for all detection rules., Evaluates the input and returns a RuleResult., A concrete rule that uses pre-compiled regular expressions., RegexRule, Rule (+1 more)
 
 ### Community 92 - "backend/app/features/auth (n=14)"
-Cohesion: 0.19
-Nodes (13): _extract_session_token(), get_auth_service(), get_current_auth_session(), get_current_user(), AsyncSession, AuthSession, Request, User (+5 more)
+Cohesion: 0.14
+Nodes (16): _extract_session_token(), get_auth_service(), get_current_auth_session(), get_current_user(), AsyncSession, AuthSession, Request, User (+8 more)
 
 ### Community 93 - "backend/app/features/sessions (n=14)"
 Cohesion: 0.18
-Nodes (7): NetworkSession, Database model for network sessions., Network flow/session observed by the IDS background engine., NetworkSessionRepository, AsyncSession, Encapsulates database operations for network sessions., AsyncSession
+Nodes (7): NetworkSession, Database model for network sessions., Network flow/session observed by the IDS background engine., NetworkSessionRepository, AsyncSession, Data-access layer for network sessions., Encapsulates database operations for network sessions.
 
 ### Community 94 - "frontend/src/components/ui (n=14)"
-Cohesion: 0.20
-Nodes (12): react, ChartConfig, ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload(), INITIAL_DIMENSION (+4 more)
+Cohesion: 0.19
+Nodes (13): react, ChartConfig, ChartContainer(), ChartContext, ChartContextProps, ChartLegendContent(), ChartTooltipContent(), getPayloadConfigFromPayload() (+5 more)
 
 ### Community 95 - "tests/unit (n=14)"
 Cohesion: 0.23
@@ -672,8 +859,8 @@ Cohesion: 0.27
 Nodes (4): DatasetLoader, DataFrame, LabelEncoder, ndarray
 
 ### Community 101 - "backend/app/common (n=12)"
-Cohesion: 0.23
-Nodes (11): CamelModel, ErrorResponse, MetaSchema, PaginatedData, BaseModel, Shared Pydantic response schemas for the unified API response format.  Every API, Metadata included in every API response., Unified success response wrapper. (+3 more)
+Cohesion: 0.24
+Nodes (10): ErrorResponse, MetaSchema, PaginatedData, BaseModel, Shared Pydantic response schemas for the unified API response format.  Every API, Metadata included in every API response., Unified success response wrapper., Unified error response wrapper. (+2 more)
 
 ### Community 102 - "backend/app/detection (n=11)"
 Cohesion: 0.24
@@ -684,32 +871,36 @@ Cohesion: 0.24
 Nodes (9): detect_command_injection(), DetectionResult, is_documentation_context(), normalize_input(), Determines if the string is likely natural language documentation/discussion, Normalizes the input string to bypass common evasion techniques., Analyses an input string to detect Command Injection attack attempts., TypedDict for the detection result. (+1 more)
 
 ### Community 104 - "backend/app/features/blocked ips (n=11)"
-Cohesion: 0.24
-Nodes (10): get_ip_activity_history(), list_blocked_ips(), manual_block_ip(), manual_unblock_ip(), User, Routes for blocked/watchlisted IP management., List blocked/watchlisted IP summaries., Queue manual block command for IDS engine. (+2 more)
+Cohesion: 0.16
+Nodes (15): get_ip_activity_history(), list_blocked_ips(), manual_block_ip(), manual_unblock_ip(), move_ip_to_watchlist(), User, Routes for blocked/watchlisted IP management., List blocked/watchlisted IP summaries. (+7 more)
 
 ### Community 105 - "backend/app/features/sessions (n=11)"
-Cohesion: 0.24
-Nodes (10): NetworkSessionResponse, NetworkSessionResponseActionRequest, NetworkSessionResponseActionResult, PaginatedNetworkSessionsResponse, BaseModel, Pydantic schemas for network sessions., Public response schema for network sessions., Paginated network sessions response payload. (+2 more)
+Cohesion: 0.09
+Nodes (28): get_network_session(), list_network_sessions(), datetime, User, FastAPI routes for network sessions., Apply analyst response action for one session row., List network sessions with pagination and optional filters., Get one network session by external session_id. (+20 more)
 
 ### Community 106 - "feature engine (n=11)"
-Cohesion: 0.53
-Nodes (8): safe_iat_stats(), safe_max(), safe_mean(), safe_min(), safe_rate(), safe_std(), safe_variance(), sanitize_feature_dict()
+Cohesion: 0.14
+Nodes (12): Compares list-based packet-length stats against the incremental         (Welford, SessionFeatureExtractor, safe_iat_stats(), safe_max(), safe_mean(), safe_min(), safe_rate(), safe_std() (+4 more)
 
 ### Community 108 - "tests/unit (n=11)"
 Cohesion: 0.29
 Nodes (4): CICIDS2018TrainingEvaluationTest, _FakeModel, DataFrame, ndarray
+
+### Community 109 - "traffic engine/session builder (n=11)"
+Cohesion: 0.14
+Nodes (5): RunningStatsTest, Population variance, matching ``statistics.pvariance`` semantics., Incremental mean/variance/min/max using Welford's online algorithm.      Maintai, Population standard deviation, matching ``statistics.pstdev``., RunningStats
 
 ### Community 110 - "backend/app/features/auth (n=10)"
 Cohesion: 0.29
 Nodes (9): generate_verification_token(), Redis, URLSafeTimedSerializer, Email verification token utilities.  Design ------ - Tokens are HMAC-signed payl, Return a signed, time-limited verification token., Validate a verification token and mark it as used.      Returns the payload dict, _serializer(), _token_hash() (+1 more)
 
 ### Community 111 - "backend/app/features/sessions (n=10)"
-Cohesion: 0.27
-Nodes (9): get_network_session(), list_network_sessions(), datetime, User, FastAPI routes for network sessions., Apply analyst response action for one session row., List network sessions with pagination and optional filters., Get one network session by external session_id. (+1 more)
+Cohesion: 0.10
+Nodes (13): EngineWSAuthError, Exception, Raised when the backend rejects (or never replies to) the auth frame., AuthenticateTest, BackoffTest, CatchupTest, FakeAckPublisher, FakeWebSocket (+5 more)
 
 ### Community 112 - "backend/app/features/user sessions (n=10)"
-Cohesion: 0.29
-Nodes (7): SessionLocationResponse, UserSessionResponse, _device_name(), _device_type(), parse_user_agent(), ParsedUserAgent, Parse a stored User-Agent string into user-friendly device fields.
+Cohesion: 0.53
+Nodes (5): _device_name(), _device_type(), parse_user_agent(), ParsedUserAgent, Parse a stored User-Agent string into user-friendly device fields.
 
 ### Community 113 - "backend/migrations (n=10)"
 Cohesion: 0.24
@@ -720,8 +911,8 @@ Cohesion: 0.20
 Nodes (9): permission, bash, edit, external_directory, glob, grep, list, read (+1 more)
 
 ### Community 115 - "frontend/src/lib/backend (n=10)"
-Cohesion: 0.31
-Nodes (8): fallbackActivity(), GET(), mapActivity(), BlockedIpActivityResponse, BlockedIpActivityRow, BlockedIpListResponse, fetchBlockedIpActivityFromBackend(), toArray()
+Cohesion: 0.10
+Nodes (12): LivePredictor, Path, Builds the feature frame once and reuses it for both the         synchronous pri, RuntimeModelBundleConfig, PacketData, _build_live_predictor_with_slow_secondary(), DummyLabelEncoder, FastDummyModel (+4 more)
 
 ### Community 116 - "backend/app/common (n=9)"
 Cohesion: 0.22
@@ -732,20 +923,24 @@ Cohesion: 0.28
 Nodes (5): Complete the password reset using a valid reset token.      On success the token, reset_password(), Request body for completing a password reset., ResetPasswordRequest, ResetPasswordValidationTest
 
 ### Community 118 - "backend/app/features/block events (n=9)"
-Cohesion: 0.25
-Nodes (5): get_block_event_service(), AsyncSession, Dependencies for block events feature., BlockEventService, Service for block/watchlist event upsert flow.
+Cohesion: 0.22
+Nodes (6): get_block_event_service(), AsyncSession, Dependencies for block events feature., BlockEventService, Service for block/watchlist event upsert flow., Push block-actions-over-time/network-threat-rollups updates.          Debounced
 
 ### Community 119 - "backend/app/features/sessions (n=9)"
-Cohesion: 0.25
-Nodes (7): NetworkSessionFilters, Filters for session list endpoint., Fetch paginated network sessions using optional filters., list_traffic(), datetime, User, Frontend-facing traffic routes backed by persisted network sessions.
+Cohesion: 0.09
+Nodes (16): EngineLimitExceededException, EngineNotFoundException, PendingRegistrationNotFoundException, Engine-specific exceptions., Raised when an engine does not exist or is not owned by the user., Raised when a user exceeds the maximum number of registered engines., Raised when a registration_id has no pending entry (never existed, expired, or a, EngineService (+8 more)
 
 ### Community 120 - "docs/superpowers (n=9)"
-Cohesion: 0.22
-Nodes (9): backend/CHECKLIST.md, Loader Specialization for Canonical Feature Schema, Canonical Legacy CICIDS2017 Training Implementation Plan, CICIDS2017 Dataset Preparation Implementation Plan, Staged CICIDS2017 Model Build Implementation Plan, Strict CICIDS2017 Dataset Validation Implementation Plan, Reproducible Dataset Preparation CLI Pattern, Staged Build with Atomic Activation and Rollback (+1 more)
+Cohesion: 0.09
+Nodes (23): check_and_consume_nonce(), _path_with_query(), AsyncSession, Exception, Redis, Request, Shared auth guard for trusted service-to-service requests.  Every request from t, Raised when the Redis-backed nonce replay cache can't be reached.      Deliberat (+15 more)
 
 ### Community 121 - "backend/smoke (n=9)"
-Cohesion: 0.28
-Nodes (4): FakeAlertService, FakeRealtimeService, Smoke test for IDS ingest -> alert upsert -> realtime broadcast flow., run_smoke()
+Cohesion: 0.19
+Nodes (5): FakeAlertService, FakeIDSEventRepository, FakeRealtimeService, Smoke test for IDS ingest -> alert upsert -> realtime broadcast flow., run_smoke()
+
+### Community 122 - "response engine (n=9)"
+Cohesion: 0.13
+Nodes (15): ApiKey, SessionLocation, UserModalProps, UserSession, AlertDialog(), AlertDialogAction(), AlertDialogCancel(), AlertDialogContent() (+7 more)
 
 ### Community 123 - "tests/integration (n=9)"
 Cohesion: 0.39
@@ -756,12 +951,16 @@ Cohesion: 0.32
 Nodes (6): Routes for block/watchlist event reporting., upsert_block_event(), BlockEventResponse, BlockEventUpsertRequest, BaseModel, Schemas for block/watchlist event ingestion and response.
 
 ### Community 125 - "docs/superpowers (n=8)"
-Cohesion: 0.25
-Nodes (8): backend/docker-compose.yml, backend/.env, Docker Postgres Dev Service (localhost:8080), Docker Postgres Pinned Source of Truth, Frontend Data Sources and Docker Postgres Plan, frontend/.env, Single Predictable Frontend Data Path, README.md
+Cohesion: 0.08
+Nodes (25): 1. User session (browser clients), 2. Internal service token (IDS runtime → backend), 3. API keys, API Layer, Architecture, Authentication, Backend Architecture, Backend (`backend/requirements.txt`) (+17 more)
 
 ### Community 126 - "docs/superpowers (n=8)"
-Cohesion: 0.46
-Nodes (8): Configurable Packet Consumer Worker Threads, Throttle Active-Session ML Under Sustained Backlog, Overload Load-Shedding Policy, Queue Overload Telemetry (queue_overloaded/queue_critical/processing_backlog), Packet Queue High/Critical Watermarks, IDS Queue Throughput Scaling Strategy, IDS Queue Throughput Scaling Implementation Plan, EngineTelemetry / telemetry collector
+Cohesion: 0.08
+Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
+
+### Community 127 - "tests/unit (n=8)"
+Cohesion: 0.08
+Nodes (24): Backend, Cache / Queue, Code Quality, Common Development Tasks, Context Loading, Database, Definition of Done, Development Commands (+16 more)
 
 ### Community 128 - "tools (n=8)"
 Cohesion: 0.64
@@ -776,16 +975,16 @@ Cohesion: 0.33
 Nodes (4): DetectorAdapter, EngineRegistry, Protocol, Executes the detection logic on the given string payload.         Returns a tupl
 
 ### Community 131 - "tests/unit (n=7)"
-Cohesion: 0.38
-Nodes (3): LoginRequest, Schema for email/password login., LoginValidationTest
+Cohesion: 0.08
+Nodes (24): Basic Types, Blog with Full Relations, Complex Examples, Defining Relations, Drizzle Relations & Relational Queries, Example Comparison, Feed Query, Imports (+16 more)
 
 ### Community 132 - "backend/smoke (n=7)"
-Cohesion: 0.48
-Nodes (5): _idle_timeout_case(), main(), _max_duration_case(), Packet, Targeted smoke for session finalization reasons.  Validates that SessionBuilder
+Cohesion: 0.09
+Nodes (22): `alerts` — `app/features/alerts/models.py`, `api_keys`, `block_events` — `app/features/block_events/models.py`, Database, Engine, `engine_commands` — `app/features/engine_commands/models.py`, `engine_telemetry_snapshots` — `app/features/engine_telemetry/models.py`, ER Overview (+14 more)
 
 ### Community 133 - "frontend/src/lib/actions (n=7)"
-Cohesion: 0.43
-Nodes (5): respondThreatAction(), toBackendAction(), updateThreatStatus(), applyThreatResponseAction(), ThreatStatus
+Cohesion: 0.09
+Nodes (22): Build-time vs Runtime, Docker Compose, Docker Deployment, Dockerfile, Environment Variables, Health Check Endpoint, Image Optimization, ISR and Cache Handlers (+14 more)
 
 ### Community 135 - "tests/integration (n=7)"
 Cohesion: 0.43
@@ -804,16 +1003,16 @@ Cohesion: 0.33
 Nodes (6): Backend Python Dependency Manifest, Graphify Skill Trigger (.claude/CLAUDE.md), Graphify Query Rules (root CLAUDE.md), IDS Runtime Python Dependency Manifest (Linux), IDS Runtime Python Dependency Manifest (Windows), Graphify Tooling Dependencies Bundled Into Windows Requirements
 
 ### Community 144 - "(root) (n=5)"
-Cohesion: 0.40
-Nodes (5): Passive Userland IDS Project Identity, Legacy venv/pip-freeze/run Workflow Notes, Realtime AI-Assisted IDS Project Identity (CONTEXT.md), smartIDS / Heimdall IDS Project Overview, SmartIDS Root README Overview
+Cohesion: 0.67
+Nodes (3): Passive Userland IDS Project Identity, Legacy venv/pip-freeze/run Workflow Notes, SmartIDS Root README Overview
 
 ### Community 145 - "backend (n=5)"
-Cohesion: 0.40
-Nodes (5): SQL Injection Merge Context, SQLDecisionRequest Contract, SQLDecisionResponse Contract, Phase 5: SQL Injection Feature Module, Target Backend Modules
+Cohesion: 0.12
+Nodes (17): Backend Agent Guide, Change Safety Checklist, Commands You Should Actually Use, Current Backend Shape (verified), Env and Infra Gotchas, Main Project Context (smartIDS), Realtime Data Flow Contract (ML -> Backend -> Frontend), Realtime Payload Requirements (+9 more)
 
 ### Community 146 - "backend/app/features/alerts (n=5)"
-Cohesion: 0.40
-Nodes (3): AlertNotFoundException, Alert-specific exceptions., Raised when an alert cannot be found.
+Cohesion: 0.17
+Nodes (8): Any, DataFrame, Same as ``predict_primary`` but takes an already-built frame.          Lets a ca, RuntimeModelBundle, RuntimeModelStack, DummyLabelEncoder, DummyModel, _make_bundle()
 
 ### Community 147 - "backend/app/features/api keys (n=5)"
 Cohesion: 0.40
@@ -832,8 +1031,8 @@ Cohesion: 0.40
 Nodes (4): get_ids_event_service(), AsyncSession, FastAPI dependencies for the IDS events feature., Provide an IDSEventService instance for the current request.
 
 ### Community 151 - "backend/app/features/sessions (n=5)"
-Cohesion: 0.40
-Nodes (4): get_network_session_service(), AsyncSession, FastAPI dependencies for network sessions feature., Provide NetworkSessionService for current request.
+Cohesion: 0.09
+Nodes (22): Application, Bulk Insert, Bulk Operations, Bulk Update with CASE, Bulk Upsert, Cache Invalidation, Caching Strategies, Cursor-Based (Better Performance) (+14 more)
 
 ### Community 152 - "backend/app/features/sessions (n=5)"
 Cohesion: 0.40
@@ -847,69 +1046,549 @@ Nodes (3): SQL injection feature exceptions., Raised when SQL injection payload 
 Cohesion: 0.60
 Nodes (4): main(), Path, Run all backend smoke checks in sequence.  Usage:   python backend/smoke/run_all, run_script()
 
+### Community 155 - "tests/integration (n=5)"
+Cohesion: 0.10
+Nodes (21): Anti-Patterns (CRITICAL), Basic Table with Timestamps, Directory Structure, Drizzle ORM, Essential Commands, Filtered Query, Foreign Key with Index, "How do I model this relationship?" (+13 more)
+
 ### Community 157 - "docs (n=4)"
-Cohesion: 0.50
-Nodes (4): SmartIDS Agent Notes, Backend Checklist Working Rules, SmartIDS Project Context Document, SmartIDS Master Plan
+Cohesion: 0.22
+Nodes (8): SmartIDS Agent Notes, Backend Implementation Checklist, Change Log (Major), Completed, In Progress, Planned, Temporary Smoke Scaffolding, Working Rules
 
 ### Community 158 - "backend/app/features/engine commands (n=4)"
 Cohesion: 0.50
 Nodes (3): get_engine_command_service(), AsyncSession, Dependencies for engine command feature.
 
 ### Community 159 - "backend/app/features/engine telemetry (n=4)"
-Cohesion: 0.50
-Nodes (3): get_engine_telemetry_service(), AsyncSession, Dependencies for IDS engine telemetry.
-
-### Community 160 - "docs (n=4)"
-Cohesion: 0.50
-Nodes (4): Linux Test Lab Plan, Phase 2: Linux Test Lab Plan, Linux Lab Plan Reference (docs/README.md), Safe Validation Guidance
+Cohesion: 0.18
+Nodes (16): compute_sha256(), Path, Pre-load integrity verification for ML runtime artifacts.  Computes and verifies, Return the hex-encoded SHA-256 digest of the file at ``path``., Verify that ``path`` matches the checksum recorded at ``checksum_path``.      Ra, verify_artifact_checksum(), _checksum_path(), load_runtime_model_artifacts() (+8 more)
 
 ### Community 161 - "frontend (n=4)"
 Cohesion: 0.50
 Nodes (3): frontendRoot, nextConfig, workspaceRoot
 
 ### Community 164 - "backend (n=3)"
-Cohesion: 0.67
-Nodes (3): Realtime Data Flow Contract (ML -> Backend -> Frontend), WebSocket Integration Rules, Phase 4: Realtime Web Dashboard Stream
-
-### Community 165 - "docs (n=3)"
-Cohesion: 0.67
-Nodes (3): Dashboard Live-Data Architecture Task, Required Backend Changes (Live-Data Plan), Source Of Truth By Page Table
-
-### Community 166 - "docs (n=3)"
-Cohesion: 0.67
-Nodes (3): XGBoost Primary + DecisionTree Secondary Model Stack, Two-Model Strategy (Early Detector + Completed-Flow Classifier), Phase 4: Custom Decision Tree Model
-
-### Community 179 - "backend (n=3)"
-Cohesion: 0.67
-Nodes (3): Backend Data Flow (Primary Web / SQLi / Desktop), Target Runtime Architecture, SmartIDS Runtime Pipeline (README)
+Cohesion: 0.14
+Nodes (15): CamelModel, ApproveRegistrationRequest, EngineCredentialResponse, PaginatedEnginesResponse, PendingRegistrationResponse, Pydantic schemas for the engines (browser-based registration) feature., Session-authenticated: what the approval page shows the user., Session-authenticated: user names the engine and approves it. (+7 more)
 
 ### Community 180 - "backend/templates (n=3)"
 Cohesion: 1.00
 Nodes (3): Base Email Layout Template, OAuth Account Notice Email Template, Verify Email Template
+
+### Community 185 - "tests/integration (n=3)"
+Cohesion: 0.22
+Nodes (5): DashboardMetricsWebSocketTest, FakeAsyncRedis, Build valid x-smartids-* signing headers, mirroring the production     signing-s, Minimal in-memory stand-in for redis.asyncio.Redis's SET NX EX usage., sign_request()
+
+### Community 206 - "backend (n=2)"
+Cohesion: 0.12
+Nodes (16): Temporary Smoke Scaffolding Policy, 1) Start backend, 2) Service-level smoke (no HTTP), 2b) Backend database module smoke, 3) API-level smoke (HTTP), 4) Engine commands API smoke (queue -> poll -> ack), 5) Unified reporting API smoke (ids-events + alerts + block-events), 6) Session finalization reason smoke (idle/max expiry) (+8 more)
+
+### Community 210 - "backend (n=2)"
+Cohesion: 0.19
+Nodes (6): deque, HeuristicDetectorEvictionTest, _make_packet(), HeuristicDecision, HeuristicDetector, Early packet-level heuristic detector.      This runs before flow/session aggreg
+
+### Community 212 - "docs (n=2)"
+Cohesion: 0.10
+Nodes (20): Async Patterns, Bundling, Data Patterns, Debug Tricks, Directives, Error Handling, File Conventions, Font Optimization (+12 more)
+
+### Community 223 - "backend (n=1)"
+Cohesion: 0.10
+Nodes (20): Aggregations, Connection Setup, Delete, drizzle.config.ts, drizzle-kit Commands, Drizzle + PostgreSQL Quick Reference, Error Codes, Insert (+12 more)
+
+### Community 243 - "backend (n=1)"
+Cohesion: 0.15
+Nodes (4): EngineWSClient, Exponential backoff with full jitter, base 1s / cap 60s (defaults)., One durable-queue catch-up poll per (re)connect.          Reuses ``BackendComman, ``BackgroundPublisher`` worker-thread callback.          Hands the ack off to th
+
+### Community 244 - "docs (n=1)"
+Cohesion: 0.15
+Nodes (15): clear_session_cookie(), Remove the session cookie from the response., logout(), list_user_sessions(), AuthSession, Response, User, List active and recent sessions for the authenticated user. (+7 more)
+
+### Community 245 - "docs (n=1)"
+Cohesion: 0.11
+Nodes (18): Additive, opt-in runtime integrations, Architectural Decisions, Bounded in-memory/file-backed state for IP activity, Engine↔backend WebSocket is a latency optimization, not a replacement for the durable command queue, Engine-command dedupe is process-local, not durable, Fail-fast model loading, Frontend migrated off direct database writes, HMAC-signed shared secret, not bare-token comparison (+10 more)
+
+### Community 246 - "docs (n=1)"
+Cohesion: 0.11
+Nodes (18): Avoid Duplicate Fetches, Basic OG Image, Custom Fonts, Dynamic Metadata, Dynamic OG Image, File Naming, Important Rules, Important: Server Components Only (+10 more)
+
+### Community 247 - "docs (n=1)"
+Cohesion: 0.20
+Nodes (8): EngineHeaderInternalAuthTest, InternalServiceAuthTest, json_dumps(), Build valid x-smartids-* signing headers, mirroring the production     signing-s, Covers the x-smartids-engine-id per-engine HMAC secret resolution path     added, Proves the engine's own secret is used as the HMAC key — not the         global, Regression guard: when x-smartids-engine-id is absent, behavior must         be, sign_request()
+
+### Community 269 - "Parallel & Intercepting Routes"
+Cohesion: 0.11
+Nodes (17): 1. Missing `default.tsx` → 404 on Refresh, 2. Modal Persists After Navigation, 3. Nested Parallel Routes Need Defaults Too, 4. Intercepted Route Shows Wrong Content, 5. TypeScript Errors with `params`, Common Gotchas, Complete Example: Photo Gallery Modal, File Structure (+9 more)
+
+### Community 270 - "use-realtime-connection-state.ts"
+Cohesion: 0.17
+Nodes (10): getBackendWsUrl(), connections, EnvelopeListener, getConnection(), RealtimeConnection, RealtimeConnectionState, RealtimeEnvelope, SharedRealtimeConnection (+2 more)
+
+### Community 271 - "test_secondary_model_dispatch.py"
+Cohesion: 0.20
+Nodes (6): DummyLabelEncoder, FastDummyModel, Path, SecondaryModelDispatchTest, SlowDummyModel, _write_checksum()
+
+### Community 272 - "Engine"
+Cohesion: 0.15
+Nodes (7): Engine, A registered IDS engine instance, holding its own per-engine HMAC secret.      R, EngineRepository, AsyncSession, Data-access layer for Engine entities., Encapsulates database operations for Engine entities., Unscoped by user — used by the internal-auth hot path to resolve a secret.
+
+### Community 273 - "API Reference"
+Cohesion: 0.12
+Nodes (16): API Reference, Block Events (`/api/v1/block-events`) — `app/features/block_events/`, Conventions That Apply to Every Endpoint, Engine Telemetry (`/api/v1/engine-telemetry`) — `app/features/engine_telemetry/`, Frontend Consumption, `GET /logs`, `GET /traffic`, Logs (`/api/v1/logs`) — `app/features/logs/` (+8 more)
+
+### Community 274 - "Data Patterns"
+Cohesion: 0.12
+Nodes (15): Avoiding Data Waterfalls, Client Component Data Fetching, Data Patterns, Decision Tree, Option 1: Pass from Server Component (Preferred), Option 2: Fetch on Mount (When Necessary), Option 3: Server Action for Reads (Works But Not Ideal), Pattern 1: Server Components (Preferred for Reads) (+7 more)
+
+### Community 275 - "5. Re-render Optimization"
+Cohesion: 0.12
+Nodes (16): 5.10 Subscribe to Derived State, 5.11 Use Functional setState Updates, 5.12 Use Lazy State Initialization, 5.13 Use Transitions for Non-Urgent Updates, 5.14 Use useDeferredValue for Expensive Derived Renders, 5.15 Use useRef for Transient Values, 5.1 Calculate Derived State During Rendering, 5.2 Defer State Reads to Usage Point (+8 more)
+
+### Community 276 - "router.py"
+Cohesion: 0.19
+Nodes (14): approve_registration(), get_pending_registration(), list_engines(), User, FastAPI routes for browser-based IDS engine registration and management.  Regist, Rename an engine. The credential itself can never be changed here., Revoke an engine's credential. This is a soft revoke, not a hard delete., Retrieve a pending registration's announced metadata for user review. (+6 more)
+
+### Community 277 - "SmartIDS: Browser-Based Engine Registration + Capture-Level Watch/Exclude Filtering"
+Cohesion: 0.13
+Nodes (14): Complications / open items surfaced (verify before implementing, not papered over), Context, Critical files (Part A), Critical files (Part B), Part A: Browser-Based Engine Registration, Part B: Capture-level IP/port watch & exclude filtering, Phase 1 — Independent startup, browser registration, credential issuance, persistent local config, Phase 2 — Heartbeats, WS connectivity, dashboard status (+6 more)
+
+### Community 278 - "Roadmap"
+Cohesion: 0.13
+Nodes (14): Cleanup, Completed — Capture-Level Watch/Exclude Filtering (2026-07-19), Completed — Engine Performance / Security / Realtime (2026-07-18), Dashboard / Live Data, Engine Registration / Capture Filtering (2026-07-19), Frontend, In Progress, ML / Dataset (+6 more)
+
+### Community 279 - "Bundling"
+Cohesion: 0.13
+Nodes (14): Bundle Analysis, Bundling, Common Problematic Packages, CSS Imports, Error Signs, Error Signs, ESM/CommonJS Issues, Migrating from Webpack to Turbopack (+6 more)
+
+### Community 280 - "7. JavaScript Performance"
+Cohesion: 0.13
+Nodes (15): 7.10 Hoist RegExp Creation, 7.11 Use flatMap to Map and Filter in One Pass, 7.12 Use Loop for Min/Max Instead of Sort, 7.13 Use Set/Map for O(1) Lookups, 7.14 Use toSorted() Instead of sort() for Immutability, 7.1 Avoid Layout Thrashing, 7.2 Build Index Maps for Repeated Lookups, 7.3 Cache Property Access in Loops (+7 more)
+
+### Community 281 - "Quick Reference"
+Cohesion: 0.13
+Nodes (14): 1. Eliminating Waterfalls (CRITICAL), 2. Bundle Size Optimization (CRITICAL), 3. Server-Side Performance (HIGH), 4. Client-Side Data Fetching (MEDIUM-HIGH), 5. Re-render Optimization (MEDIUM), 6. Rendering Performance (MEDIUM), 7. JavaScript Performance (LOW-MEDIUM), 8. Advanced Patterns (LOW) (+6 more)
+
+### Community 282 - "EngineTelemetryIngestTest"
+Cohesion: 0.20
+Nodes (6): EngineTelemetryIngestTest, FakeAsyncRedis, FakeEngineTelemetryService, Build valid x-smartids-* signing headers, mirroring the production     signing-s, Minimal in-memory stand-in for redis.asyncio.Redis's SET NX EX usage., sign_request()
+
+### Community 283 - "EngineWSRouterTest"
+Cohesion: 0.20
+Nodes (3): EngineWSRouterTest, FakeAsyncRedis, sign_ws_auth()
+
+### Community 284 - "Dashboard (`/api/v1/dashboard`) — `app/features/dashboard/`"
+Cohesion: 0.14
+Nodes (14): Dashboard (`/api/v1/dashboard`) — `app/features/dashboard/`, `GET /dashboard/attack-distribution`, `GET /dashboard/audit`, `GET /dashboard/block-actions-over-time`, `GET /dashboard/history`, `GET /dashboard/incidents`, `GET /dashboard/incidents/{incident_id}`, `GET /dashboard/incidents/{incident_id}/report` (+6 more)
+
+### Community 285 - "Find Skills"
+Cohesion: 0.14
+Nodes (13): Common Skill Categories, Find Skills, How to Help Users Find Skills, Step 1: Understand What They Need, Step 2: Check the Leaderboard First, Step 3: Search for Skills, Step 4: Verify Quality Before Recommending, Step 5: Present Options to the User (+5 more)
+
+### Community 286 - "SKILL.md"
+Cohesion: 0.14
+Nodes (10): Directives, Next.js Directive, React Directives, `'use cache'`, `'use client'`, `'use server'`, Quick Reference, Suspense Boundaries (+2 more)
+
+### Community 287 - "Forms & Inputs"
+Cohesion: 0.16
+Nodes (8): Buttons inside inputs use InputGroup + InputGroupAddon, Contents, Field validation and disabled states, FieldSet + FieldLegend for grouping related fields, Forms & Inputs, Forms use FieldGroup + Field, InputGroup requires InputGroupInput/InputGroupTextarea, Option sets (2–7 choices) use ToggleGroup
+
+### Community 288 - "Customization & Theming"
+Cohesion: 0.14
+Nodes (14): 1. Built-in variants, 2. Tailwind classes via `className`, 3. Add a new variant, 4. Wrapper components, Adding Custom Colors, Border Radius, Changing the Theme, Checking for Updates (+6 more)
+
+### Community 289 - "Available Tools"
+Cohesion: 0.15
+Nodes (12): Available Tools, Debug Tricks, Example: Get Errors, `get_errors`, `get_logs`, `get_page_metadata`, `get_project_metadata`, `get_routes` (+4 more)
+
+### Community 290 - "Component Composition"
+Cohesion: 0.15
+Nodes (13): Avatar always needs AvatarFallback, Button has no isPending or isLoading prop, Callouts use Alert, Card structure, Choosing between overlay components, Component Composition, Contents, Dialog, Sheet, and Drawer always need a Title (+5 more)
+
+### Community 291 - "CompletedFlowPredictor"
+Cohesion: 0.22
+Nodes (3): CompletedFlowPredictor, Path, Builds the feature frame once and reuses it for both the         synchronous pri
+
+### Community 292 - "contracts.py"
+Cohesion: 0.31
+Nodes (9): build_ids_event_payload(), build_session_upsert_payload(), _iso_ts(), _prediction_event_id(), datetime, _risk_score(), _session_id(), _severity_from_prediction() (+1 more)
+
+### Community 293 - "get_internal_auth_redis"
+Cohesion: 0.20
+Nodes (7): get_internal_auth_redis(), get_internal_auth_redis_pool(), Redis, Async Redis client for hot request-path use.  Unlike the synchronous ``redis`` c, Return a cached, process-wide async Redis client.      ``redis.asyncio.from_url`, FastAPI dependency wrapper around the cached async Redis client., Authentication business logic.
+
+### Community 294 - "APIKeyService"
+Cohesion: 0.20
+Nodes (7): APIKeyNotFoundException, Raised when an API key does not exist or is not owned by the user., Update API key metadata., UpdateAPIKeyRequest, APIKeyService, Business logic for API key management., Service layer for API key CRUD operations.
+
+### Community 295 - "SQLInjectionEvent"
+Cohesion: 0.18
+Nodes (7): Database model for SQL injection decision events., Stores SQL injection detection decisions for auditing., SQLInjectionEvent, AsyncSession, Data-access layer for SQL injection decisions., Encapsulates database operations for SQL injection events., SQLInjectionRepository
+
+### Community 296 - "Development Workflow"
+Cohesion: 0.17
+Nodes (11): Context Loading, Definition of Done, Development Lifecycle, Development Workflow, Documentation Maintenance, Git Workflow, Graphify Workflow, Implementation Rules (+3 more)
+
+### Community 297 - "Error Handling"
+Cohesion: 0.17
+Nodes (11): Auth Errors, Error Boundaries, Error Handling, Error Hierarchy, `error.tsx`, `global-error.tsx`, Not Found, `not-found.tsx` (+3 more)
+
+### Community 298 - "File Conventions"
+Cohesion: 0.17
+Nodes (11): File Conventions, File Conventions Reference, Intercepting Routes, Middleware / Proxy, Next.js 14-15: `middleware.ts`, Next.js 16+: `proxy.ts`, Parallel Routes, Private Folders (+3 more)
+
+### Community 299 - "Commands"
+Cohesion: 0.17
+Nodes (12): `add` — Add components, `apply` — Apply a preset to an existing project, `build` — Build a custom registry, Commands, `diff` — Check for updates, `docs` — Get component documentation URLs, Dry-Run Mode, `info` — Project information (+4 more)
+
+### Community 300 - "Tools"
+Cohesion: 0.17
+Nodes (11): Configuring Registries, Setup, `shadcn:get_add_command_for_items`, `shadcn:get_audit_checklist`, `shadcn:get_item_examples_from_registries`, `shadcn:get_project_registries`, `shadcn:list_items_in_registries`, shadcn MCP Server (+3 more)
+
+### Community 301 - "Styling & Customization"
+Cohesion: 0.17
+Nodes (12): Built-in variants first, className for layout only, Contents, No manual dark: color overrides, No manual z-index on overlay components, No raw color values for status/state indicators, No space-x-* / space-y-*, Prefer size-* over w-* h-* when equal (+4 more)
+
+### Community 302 - "6. Rendering Performance"
+Cohesion: 0.17
+Nodes (12): 6.10 Use React DOM Resource Hints, 6.11 Use useTransition Over Manual Loading States, 6.1 Animate SVG Wrapper Instead of SVG Element, 6.2 CSS content-visibility for Long Lists, 6.3 Hoist Static JSX Elements, 6.4 Optimize SVG Precision, 6.5 Prevent Hydration Mismatch Without Flickering, 6.6 Suppress Expected Hydration Mismatches (+4 more)
+
+### Community 303 - "Auth (`/api/v1/auth`) — `app/features/auth/`"
+Cohesion: 0.18
+Nodes (11): Auth (`/api/v1/auth`) — `app/features/auth/`, `GET /auth/me`, `GET /auth/oauth/{provider_name}/callback`, `GET /auth/oauth/{provider_name}/start`, `POST /auth/forgot-password`, `POST /auth/login`, `POST /auth/logout`, `POST /auth/register` (+3 more)
+
+### Community 304 - "Font Optimization"
+Cohesion: 0.18
+Nodes (11): Common Mistakes, Display Strategy, Don't Use Manual Font Links, Font in Specific Components, Font Optimization, Font Weights and Styles, Google Fonts, Local Fonts (+3 more)
+
+### Community 305 - "shadcn/ui"
+Cohesion: 0.18
+Nodes (11): Component Docs, Examples, and Usage, Component Selection, Current Project Context, Detailed References, Key Fields, Key Patterns, Principles, Quick Reference (+3 more)
+
+### Community 306 - "3. Server-Side Performance"
+Cohesion: 0.18
+Nodes (10): 3.10 Use after() for Non-Blocking Operations, 3.1 Authenticate Server Actions Like API Routes, 3.2 Avoid Duplicate Serialization in RSC Props, 3.3 Avoid Shared Module State for Request Data, 3.4 Cross-Request LRU Caching, 3.5 Hoist Static I/O to Module Level, 3.6 Minimize Serialization at RSC Boundaries, 3.7 Parallel Data Fetching with Component Composition (+2 more)
+
+### Community 307 - "CustomDecisionTreeClassifier"
+Cohesion: 0.40
+Nodes (4): CustomDecisionTreeClassifier, install_runtime_aliases(), ndarray, TreeNode
+
+### Community 308 - ".test_enqueue_command_pushes_over_ws_when_newly_created"
+Cohesion: 0.24
+Nodes (3): EngineCommandServiceWSPushTest, FakeEngineCommandRepository, FakeEngineWSManager
+
+### Community 309 - "create_api_key"
+Cohesion: 0.22
+Nodes (9): create_api_key(), Create a new API key.  The full key is returned **only once**., APIKeyCreatedResponse, CreateAPIKeyRequest, PaginatedAPIKeysResponse, Pydantic schemas for the API keys feature., Paginated list of API keys., Request body for creating a new API key. (+1 more)
+
+### Community 310 - "RealtimeConnectionManager"
+Cohesion: 0.22
+Nodes (4): WebSocket, Connection manager for realtime websocket clients., Tracks active websocket connections and broadcasts JSON payloads., RealtimeConnectionManager
+
+### Community 311 - "Async Params and SearchParams"
+Cohesion: 0.20
+Nodes (9): Async Cookies and Headers, Async Params and SearchParams, Async Patterns, generateMetadata, Migration Codemod, Pages and Layouts, Route Handlers, SearchParams (+1 more)
+
+### Community 312 - "Functions"
+Cohesion: 0.20
+Nodes (9): After Response, Common Examples, Functions, Generate Functions, Navigation, Navigation Hooks (Client), Request/Response, Server Functions (+1 more)
+
+### Community 313 - "Common Causes and Fixes"
+Cohesion: 0.20
+Nodes (9): Browser-only APIs, Common Causes and Fixes, Date/Time Rendering, Debugging, Error Signs, Hydration Errors, Invalid HTML Nesting, Random Values or IDs (+1 more)
+
+### Community 314 - "Image Optimization"
+Cohesion: 0.20
+Nodes (9): Always Use next/image, Blur Placeholder, Common Mistakes, Image Optimization, Priority Loading, Remote Images Configuration, Required Props, Responsive Images (+1 more)
+
+### Community 315 - "Route Handlers"
+Cohesion: 0.20
+Nodes (9): Basic Usage, Dynamic Route Handlers, Environment Behavior, GET Handler Conflicts with page.tsx, Request Helpers, Response Helpers, Route Handlers, Supported Methods (+1 more)
+
+### Community 316 - "Scripts"
+Cohesion: 0.20
+Nodes (9): Don't Put Script in Head, Google Analytics, Google Tag Manager, Inline Scripts Need ID, Loading Strategies, Other Third-Party Scripts, Quick Reference, Scripts (+1 more)
+
+### Community 317 - "React Best Practices"
+Cohesion: 0.20
+Nodes (9): 4.1 Deduplicate Global Event Listeners, 4.2 Use Passive Event Listeners for Scrolling Performance, 4.3 Use SWR for Automatic Deduplication, 4.4 Version and Minimize localStorage Data, 4. Client-Side Data Fetching, Abstract, React Best Practices, References (+1 more)
+
+### Community 318 - "Sections"
+Cohesion: 0.20
+Nodes (9): 1. Eliminating Waterfalls (async), 2. Bundle Size Optimization (bundle), 3. Server-Side Performance (server), 4. Client-Side Data Fetching (client), 5. Re-render Optimization (rerender), 6. Rendering Performance (rendering), 7. JavaScript Performance (js), 8. Advanced Patterns (advanced) (+1 more)
+
+### Community 319 - "FakeSessionService"
+Cohesion: 0.24
+Nodes (3): FakeSessionService, FakeThreatService, ResponseFlowIntegrationTest
+
+### Community 320 - "InvalidIDSEventPayloadException"
+Cohesion: 0.25
+Nodes (6): IDSEventNotFoundException, InvalidIDSEventPayloadException, Any, IDS-events-specific exceptions., Raised when IDS event payload validation fails in service logic., Raised when an IDS event does not exist.
+
+### Community 321 - "list_threats"
+Cohesion: 0.33
+Nodes (8): get_threat(), list_threats(), datetime, User, FastAPI routes for threat reports., List threats with pagination and report filters., Get one threat report by threat id., _to_threat_response()
+
+### Community 322 - "graphify reference: extra exports and benchmark"
+Cohesion: 0.22
+Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
+
+### Community 323 - "Coding Standards"
+Cohesion: 0.22
+Nodes (8): Backend (FastAPI, `backend/`), Coding Standards, Documentation, Frontend (`frontend/`, TypeScript/Next.js), General, Packet capture / runtime (`packet_capture/`, `traffic_engine/`, `feature_engine/`, `ml/`, `threat_detection/`, `response_engine/`), Python, Testing
+
+### Community 325 - "Base vs Radix"
+Cohesion: 0.22
+Nodes (9): Accordion, Base vs Radix, Button / trigger as non-button element (base only), Composition: asChild (radix) vs render (base), Contents, Select, Select — multiple selection and object values (base only), Slider (+1 more)
+
+### Community 326 - "scripts"
+Cohesion: 0.22
+Nodes (9): scripts, build, db:generate, db:migrate, db:seed, db:studio, dev, lint (+1 more)
+
+### Community 327 - "layout.tsx"
+Cohesion: 0.33
+Nodes (6): metadata, getQueryClient(), getQueryClientOptions(), makeQueryClient(), QueryProvider(), NOTE: Avoid useState when initializing the query client if you don't
+
+### Community 328 - "FakeAsyncRedis"
+Cohesion: 0.22
+Nodes (4): FakeAsyncRedis, FakeEngineRepository, Minimal in-memory stand-in for redis.asyncio.Redis's SET NX EX usage., Stand-in for EngineRepository, patched into app.common.internal_auth so     the
+
+### Community 329 - "EmailDeliveryError"
+Cohesion: 0.29
+Nodes (6): EmailDeliveryError, EmailDeliveryPermanentError, Exception, Email delivery exceptions.  Used to separate permanent provider/configuration pr, Base class for outbound email delivery failures., Raised when a provider problem is not recoverable by retrying.
+
+### Community 330 - "SmartIDS"
+Cohesion: 0.25
+Nodes (7): Graphify, Purpose, Repository Constraints, Repository Documentation, Repository Notes, Repository Workflow, SmartIDS
+
+### Community 331 - "Drizzle Query Patterns"
+Cohesion: 0.25
+Nodes (8): Drizzle Query Patterns, Imports, Prepared Statements, Query Operators, Scalar Subquery, Subqueries, Subquery in FROM, Subquery in WHERE (EXISTS)
+
+### Community 332 - "Relational Queries API"
+Cohesion: 0.25
+Nodes (8): Custom Extras, Filtering Relations, findFirst, findMany, Relational Queries API, Selecting Columns, Setup, With Relations
+
+### Community 333 - "package.json"
+Cohesion: 0.32
+Nodes (7): ignoreScripts, name, private, trustedDependencies, version, sharp, unrs-resolver
+
+### Community 335 - "RegisterRequest"
+Cohesion: 0.38
+Nodes (3): Schema for email/password registration., RegisterRequest, RegisterValidationTest
+
+### Community 336 - "ThreatService"
+Cohesion: 0.33
+Nodes (3): Business logic for threat reports., Provides threat report retrieval operations., ThreatService
+
+### Community 337 - "Detection Rules"
+Cohesion: 0.29
+Nodes (6): 1. Async Client Components Are Invalid, 2. Non-Serializable Props to Client Components, 3. Server Actions Are the Exception, Detection Rules, Quick Reference, RSC Boundaries
+
+### Community 338 - "Runtime Selection"
+Cohesion: 0.29
+Nodes (6): Detection, Edge Runtime, Node.js Runtime (Default), Runtime Selection, Use Node.js Runtime by Default, When to Use Each
+
+### Community 339 - "Connection Pooling"
+Cohesion: 0.29
+Nodes (7): Connection Pooling, Drizzle with node-postgres Pool, Drizzle with postgres.js, PgBouncer Configuration, Pooling Modes, Transaction Pooling Limitations, Why Pool?
+
+### Community 340 - "Joins"
+Cohesion: 0.29
+Nodes (7): Full Join, Inner Join, Join with Selected Columns, Joins, Left Join, Multiple Joins, Right Join
+
+### Community 341 - "Critical Rules"
+Cohesion: 0.29
+Nodes (7): CLI, Component Structure → [composition.md](./rules/composition.md), Critical Rules, Forms & Inputs → [forms.md](./rules/forms.md), Icons → [icons.md](./rules/icons.md), Styling & Tailwind → [styling.md](./rules/styling.md), Use Components, Not Custom Markup → [composition.md](./rules/composition.md)
+
+### Community 342 - "1. Eliminating Waterfalls"
+Cohesion: 0.29
+Nodes (7): 1.1 Check Cheap Conditions Before Async Flags, 1.2 Defer Await Until Needed, 1.3 Dependency-Based Parallelization, 1.4 Prevent Waterfall Chains in API Routes, 1.5 Promise.all() for Independent Operations, 1.6 Strategic Suspense Boundaries, 1. Eliminating Waterfalls
+
+### Community 343 - "2. Bundle Size Optimization"
+Cohesion: 0.29
+Nodes (7): 2.1 Avoid Barrel File Imports, 2.2 Conditional Module Loading, 2.3 Defer Non-Critical Third-Party Libraries, 2.4 Dynamic Imports for Heavy Components, 2.5 Prefer Statically Analyzable Paths, 2.6 Preload Based on User Intent, 2. Bundle Size Optimization
+
+### Community 344 - "get_engine_service"
+Cohesion: 0.33
+Nodes (5): get_engine_service(), AsyncSession, Redis, FastAPI dependencies for the engines feature., Provide an EngineService instance for the current request.
+
+### Community 345 - "RegisterInitRequest"
+Cohesion: 0.33
+Nodes (5): Unauthenticated: an engine announces a pending registration attempt., register_init(), Unauthenticated: engine announces a pending registration attempt., RegisterInitRequest, Store a pending registration announcement in Redis, keyed by registration_id.
+
+### Community 346 - "api_smoke_dashboard_metrics_ws.py"
+Cohesion: 0.53
+Nodes (5): _http_post_json(), main(), API smoke check for dashboard metrics websocket delivery.  Usage:   python backe, run(), _ws_url()
+
+### Community 347 - "graphify reference: query, path, explain"
+Cohesion: 0.33
+Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
+
+### Community 348 - "API Keys (`/api/v1/api-keys`) — `app/features/api_keys/`"
+Cohesion: 0.33
+Nodes (6): API Keys (`/api/v1/api-keys`) — `app/features/api_keys/`, `DELETE /api-keys/{api_key_id}`, `GET /api-keys`, `GET /api-keys/{api_key_id}`, `PATCH /api-keys/{api_key_id}`, `POST /api-keys`
+
+### Community 349 - "Blocked IPs (`/api/v1/blocked-ips`) — `app/features/blocked_ips/`"
+Cohesion: 0.33
+Nodes (6): Blocked IPs (`/api/v1/blocked-ips`) — `app/features/blocked_ips/`, `DELETE /blocked-ips/{ip_address}`, `GET /blocked-ips`, `GET /blocked-ips/{ip_address}/activity`, `POST /blocked-ips`, `POST /blocked-ips/{ip_address}/watchlist`
+
+### Community 350 - "Realtime (`/api/v1/realtime`) — `app/features/realtime/`"
+Cohesion: 0.33
+Nodes (6): `POST /realtime/broadcast`, `POST /realtime/broadcast/blocked-ips`, `POST /realtime/broadcast/dashboard`, `POST /realtime/broadcast/sessions`, Realtime (`/api/v1/realtime`) — `app/features/realtime/`, `WS /realtime/ws`
+
+### Community 351 - "postgres-drizzle"
+Cohesion: 0.33
+Nodes (6): Example Usage, postgres-drizzle, Quick Start, Resources, Skill Structure, Topics Covered
+
+### Community 352 - "Drizzle Query Optimization"
+Cohesion: 0.33
+Nodes (6): Avoid N+1 Queries, Batch Operations, Drizzle Query Optimization, Prepared Statements, Select Only Needed Columns, Use Transactions for Multiple Operations
+
+### Community 353 - "Indexing Strategies"
+Cohesion: 0.33
+Nodes (6): B-Tree Indexes (Default), Covering Indexes (INCLUDE), Expression Indexes, GIN Indexes for JSONB, Indexing Strategies, Partial Indexes
+
+### Community 354 - "Aggregations"
+Cohesion: 0.33
+Nodes (6): Aggregations, Basic Aggregates, Group By, Group By with Join, Having, Imports
+
+### Community 355 - "Select Queries"
+Cohesion: 0.33
+Nodes (6): Basic Select, Comparison Operators, Conditional Filters, Pattern Matching, Select Queries, Where Clause
+
+### Community 356 - "shadcn CLI Reference"
+Cohesion: 0.33
+Nodes (5): Contents, Presets, shadcn CLI Reference, Switching Presets, Templates
+
+### Community 357 - "React Best Practices"
+Cohesion: 0.33
+Nodes (5): Creating a New Rule, Getting Started, React Best Practices, Rule File Structure, Structure
+
+### Community 359 - "SQL Injection Contract Notes"
+Cohesion: 0.40
+Nodes (4): Handoff notes, Inbound request contract, Outbound response contract, SQL Injection Contract Notes
+
+### Community 360 - "get_threat_service"
+Cohesion: 0.40
+Nodes (4): get_threat_service(), AsyncSession, FastAPI dependencies for threat reports., Provide ThreatService for current request.
+
+### Community 361 - "ThreatNotFoundException"
+Cohesion: 0.40
+Nodes (3): Threat report feature exceptions., Raised when a threat record cannot be found., ThreatNotFoundException
+
+### Community 362 - "User Sessions (`/api/v1/auth/sessions`) — `app/features/user_sessions/`"
+Cohesion: 0.40
+Nodes (5): `DELETE /auth/sessions`, `DELETE /auth/sessions/others`, `DELETE /auth/sessions/{session_id}`, `GET /auth/sessions`, User Sessions (`/api/v1/auth/sessions`) — `app/features/user_sessions/`
+
+### Community 363 - "Network Sessions (`/api/v1/sessions`) — `app/features/sessions/`"
+Cohesion: 0.40
+Nodes (5): `GET /sessions`, `GET /sessions/{session_id}`, Network Sessions (`/api/v1/sessions`) — `app/features/sessions/`, `POST /sessions/{session_id}/respond`, `POST /sessions/upsert`
+
+### Community 364 - "Schema Definition"
+Cohesion: 0.40
+Nodes (5): Column Types, Constraints, Enums, Indexes, Schema Definition
+
+### Community 365 - "Delete Operations"
+Cohesion: 0.40
+Nodes (5): Basic Delete, Delete Operations, Delete with Returning, Delete with Subquery, Soft Delete
+
+### Community 366 - "Transactions"
+Cohesion: 0.40
+Nodes (5): Basic Transaction, Nested Transactions (Savepoints), Rollback, Transaction Isolation, Transactions
+
+### Community 367 - "Update Operations"
+Cohesion: 0.40
+Nodes (5): Basic Update, Conditional Update, Increment/Decrement, Update Operations, Update with Returning
+
+### Community 368 - "Insert Operations"
+Cohesion: 0.40
+Nodes (5): Insert from Select, Insert Operations, Multiple Insert, Single Insert, Upsert (On Conflict)
+
+### Community 369 - "Icons"
+Cohesion: 0.40
+Nodes (4): Icons, Icons in Button use data-icon attribute, No sizing classes on icons inside components, Pass icons as component objects, not string keys
+
+### Community 370 - "8. Advanced Patterns"
+Cohesion: 0.40
+Nodes (5): 8.1 Do Not Put Effect Events in Dependency Arrays, 8.2 Initialize App Once, Not Per Mount, 8.3 Store Event Handlers in Refs, 8.4 useEffectEvent for Stable Callback Refs, 8. Advanced Patterns
+
+### Community 371 - "get_realtime_service"
+Cohesion: 0.50
+Nodes (3): get_realtime_service(), Dependencies for realtime feature., Provide a RealtimeService instance.
+
+### Community 372 - "graphify reference: add a URL and watch a folder"
+Cohesion: 0.50
+Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
+
+### Community 373 - "graphify reference: commit hook and native CLAUDE.md integration"
+Cohesion: 0.50
+Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify reference: commit hook and native CLAUDE.md integration
+
+### Community 374 - "graphify reference: incremental update and cluster-only"
+Cohesion: 0.50
+Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
+
+### Community 375 - "Engine Commands (`/api/v1/engine-commands`) — `app/features/engine_commands/`"
+Cohesion: 0.50
+Nodes (4): Engine Commands (`/api/v1/engine-commands`) — `app/features/engine_commands/`, `GET /engine-commands`, `POST /engine-commands`, `POST /engine-commands/ack`
+
+### Community 376 - "Threat Reports (`/api/v1/threats`) — `app/features/threats/`"
+Cohesion: 0.50
+Nodes (4): `GET /threats`, `GET /threats/{threat_id}`, `POST /threats/{threat_id}/respond`, Threat Reports (`/api/v1/threats`) — `app/features/threats/`
+
+### Community 377 - "Monitoring Queries"
+Cohesion: 0.50
+Nodes (4): Index Efficiency, Monitoring Queries, pg_stat_statements, Slow Queries
+
+### Community 378 - "Ordering & Pagination"
+Cohesion: 0.50
+Nodes (4): Cursor-Based Pagination (Better Performance), Limit & Offset, Order By, Ordering & Pagination
+
+### Community 380 - "Prefer Statically Analyzable Paths"
+Cohesion: 0.50
+Nodes (3): File-System Paths, Import Paths, Prefer Statically Analyzable Paths
+
+### Community 383 - "realtime_ws"
+Cohesion: 0.67
+Nodes (3): WebSocket, Register websocket client for server-driven alerts., realtime_ws()
+
+### Community 388 - "Alerts (`/api/v1/alerts`) — `app/features/alerts/`"
+Cohesion: 0.67
+Nodes (3): Alerts (`/api/v1/alerts`) — `app/features/alerts/`, `GET /alerts`, `POST /alerts/upsert`
+
+### Community 389 - "Health (`/api/v1/health`) — `app/features/health/`"
+Cohesion: 0.67
+Nodes (3): `GET /health/runtime`, `GET /health/runtime/history`, Health (`/api/v1/health`) — `app/features/health/`
+
+### Community 390 - "IDS Events (`/api/v1/ids-events`) — `app/features/ids_events/`"
+Cohesion: 0.67
+Nodes (3): `GET /ids-events`, IDS Events (`/api/v1/ids-events`) — `app/features/ids_events/`, `POST /ids-events`
+
+### Community 392 - "Raw SQL"
+Cohesion: 0.67
+Nodes (3): Raw SQL, SQL Operators, SQL Template
 
 ## Ambiguous Edges - Review These
 - `Graphify Query Rules (root CLAUDE.md)` → `Graphify Tooling Dependencies Bundled Into Windows Requirements`  [AMBIGUOUS]
   config/requirements_windows.txt · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **256 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+251 more)
+- **1190 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+1185 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **64 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **129 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `Graphify Query Rules (root CLAUDE.md)` and `Graphify Tooling Dependencies Bundled Into Windows Requirements`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `create_response()` connect `backend/app/common (n=24)` to `backend/app/features/realtime (n=63)`, `backend/app/features/threats (n=54)`, `backend/app/features/alerts (n=38)`, `backend/app/features/dashboard (n=35)`, `backend/app/features/api keys (n=34)`, `backend/app/features/auth (n=33)`, `backend/app/features/user sessions (n=29)`, `backend/app/features/engine telemetry (n=24)`, `backend/app/features/ids events (n=24)`, `backend/app/features/auth (n=22)`, `backend/app/features/sql injection (n=22)`, `backend/app/features/dashboard (n=21)`, `backend/app/features/blocked ips (n=19)`, `backend/app/features/engine commands (n=19)`, `backend/app/features/notifications (n=19)`, `backend/app/features/sessions (n=15)`, `backend/app/features/blocked ips (n=11)`, `backend/app/features/sessions (n=10)`, `tests/unit (n=9)`, `backend/app/features/sessions (n=9)`, `backend/app/features/block events (n=8)`?**
-  _High betweenness centrality (0.146) - this node is a cross-community bridge._
-- **Why does `useDashboardRealtime()` connect `frontend/src/lib/backend (n=49)` to `frontend/src/components/dashboard (n=70)`, `frontend/src/components/dashboard (n=59)`, `docs (n=24)`, `frontend/src/lib/realtime (n=22)`, `frontend/src/components/dashboard (n=31)`?**
-  _High betweenness centrality (0.116) - this node is a cross-community bridge._
-- **Why does `Polling Transport` connect `docs (n=24)` to `response engine (n=9)`, `frontend/src/lib/backend (n=49)`, `packet capture/forwarding (n=27)`?**
-  _High betweenness centrality (0.110) - this node is a cross-community bridge._
-- **Are the 94 inferred relationships involving `DatabaseException` (e.g. with `AlertRepository` and `.create()`) actually correct?**
-  _`DatabaseException` has 94 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 67 inferred relationships involving `create_response()` (e.g. with `list_alerts()` and `upsert_alert()`) actually correct?**
-  _`create_response()` has 67 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `create_response()` connect `backend/app/common (n=24)` to `backend/app/features/realtime (n=63)`, `backend/app/features/threats (n=54)`, `backend/app/features/alerts (n=38)`, `backend/app/features/dashboard (n=35)`, `router.py`, `backend/app/features/api keys (n=34)`, `backend/app/features/auth (n=33)`, `backend/app/features/engine telemetry (n=24)`, `backend/app/features/ids events (n=24)`, `backend/app/features/auth (n=22)`, `backend/app/features/sql injection (n=22)`, `create_api_key`, `backend/app/features/engine commands (n=19)`, `backend/app/features/notifications (n=19)`, `list_threats`, `RegisterInitRequest`, `backend/app/features/blocked ips (n=11)`, `backend/app/features/sessions (n=11)`, `docs (n=1)`, `tests/unit (n=9)`, `backend/app/features/block events (n=8)`?**
+  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `DashboardService` connect `backend/app/features/dashboard (n=21)` to `backend/app/features/engine commands (n=19)`, `backend/app/features/engine telemetry (n=24)`, `backend/app/features/alerts (n=38)`, `backend/app/features/dashboard (n=35)`, `backend/app/features/blocked ips (n=5)`, `backend/app/features/dashboard (n=5)`, `backend/app/features/block events (n=21)`, `backend/app/features/dashboard (n=31)`, `backend/app/features/sessions (n=15)`, `backend/app/core (n=30)`, `tests/unit (n=14)`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Are the 101 inferred relationships involving `DatabaseException` (e.g. with `AlertRepository` and `.create()`) actually correct?**
+  _`DatabaseException` has 101 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 73 inferred relationships involving `create_response()` (e.g. with `list_alerts()` and `upsert_alert()`) actually correct?**
+  _`create_response()` has 73 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 26 inferred relationships involving `InternalRequestSigner` (e.g. with `FastAPIAlertForwarder` and `FastAPIBlockEventForwarder`) actually correct?**
+  _`InternalRequestSigner` has 26 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `DashboardService` (e.g. with `.__init__()` and `get_blocked_ip_service()`) actually correct?**
   _`DashboardService` has 9 INFERRED edges - model-reasoned connections that need verification._

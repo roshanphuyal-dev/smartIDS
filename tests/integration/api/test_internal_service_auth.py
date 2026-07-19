@@ -10,6 +10,7 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 import types
 import importlib.metadata
 
@@ -103,9 +104,11 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.common.exception_handlers import register_exception_handlers
+from app.common.internal_auth import ENGINE_ID_HEADER
 from app.core.config import get_settings
 from app.core.redis import get_internal_auth_redis
 from app.features.alerts.dependencies import get_alert_service
+from app.features.engines.models import EngineStatus
 from app.features.alerts.router import router as alerts_router
 from app.features.block_events.dependencies import get_block_event_service
 from app.features.block_events.router import router as block_events_router
@@ -442,6 +445,147 @@ class InternalServiceAuthTest(unittest.TestCase):
 
             second = client.post("/api/v1/engine-commands", content=body, headers=headers)
             self.assertEqual(second.status_code, 401, second.text)
+
+
+class FakeEngineRepository:
+    """Stand-in for EngineRepository, patched into app.common.internal_auth so
+    the per-engine HMAC secret resolution tests below don't require a real
+    database — mirrors FakeAsyncRedis's role for the Redis dependency."""
+
+    engines_by_public_id: dict[str, SimpleNamespace] = {}
+
+    def __init__(self, _session) -> None:
+        pass
+
+    async def get_by_public_id(self, engine_public_id: str):
+        return FakeEngineRepository.engines_by_public_id.get(engine_public_id)
+
+
+class EngineHeaderInternalAuthTest(unittest.TestCase):
+    """Covers the x-smartids-engine-id per-engine HMAC secret resolution path
+    added to require_internal_service_auth alongside the engines feature.
+    Uses the engine-commands endpoint like the tests above, since it's the
+    one route in this test app whose response schema doesn't drift from the
+    fake service's stub payload (see the comment on
+    test_valid_signed_request_allows_ingest)."""
+
+    def setUp(self) -> None:
+        os.environ["SMARTIDS_INTERNAL_SERVICE_TOKEN"] = TEST_SECRET
+        get_settings.cache_clear()
+        self.fake_redis = FakeAsyncRedis()
+        app.dependency_overrides[get_internal_auth_redis] = lambda: self.fake_redis
+        FakeEngineRepository.engines_by_public_id = {}
+        self.repository_patcher = patch(
+            "app.common.internal_auth.EngineRepository", FakeEngineRepository
+        )
+        self.repository_patcher.start()
+
+    def tearDown(self) -> None:
+        self.repository_patcher.stop()
+        app.dependency_overrides.pop(get_internal_auth_redis, None)
+        FakeEngineRepository.engines_by_public_id = {}
+
+    def test_active_engine_with_correct_signature_is_accepted(self) -> None:
+        engine_secret = "engine-secret-active-000000000000"
+        FakeEngineRepository.engines_by_public_id["engine-active-1"] = SimpleNamespace(
+            status=EngineStatus.active, secret=engine_secret
+        )
+        payload = {
+            "command_id": "c-engine-active",
+            "action": "watchlist",
+            "ip_address": "203.0.113.20",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=engine_secret)
+        headers[ENGINE_ID_HEADER] = "engine-active-1"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 201, response.text)
+
+    def test_active_engine_with_wrong_secret_signature_is_rejected(self) -> None:
+        """Proves the engine's own secret is used as the HMAC key — not the
+        global SMARTIDS_INTERNAL_SERVICE_TOKEN — by signing with a different
+        secret than the one stored on the (active, otherwise-valid) engine."""
+        FakeEngineRepository.engines_by_public_id["engine-active-2"] = SimpleNamespace(
+            status=EngineStatus.active, secret="engine-secret-real-0000000000000"
+        )
+        payload = {
+            "command_id": "c-engine-wrong-secret",
+            "action": "watchlist",
+            "ip_address": "203.0.113.24",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=TEST_SECRET)
+        headers[ENGINE_ID_HEADER] = "engine-active-2"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+
+    def test_revoked_engine_is_rejected_even_with_correct_signature(self) -> None:
+        engine_secret = "engine-secret-revoked-00000000000"
+        FakeEngineRepository.engines_by_public_id["engine-revoked-1"] = SimpleNamespace(
+            status=EngineStatus.revoked, secret=engine_secret
+        )
+        payload = {
+            "command_id": "c-engine-revoked",
+            "action": "watchlist",
+            "ip_address": "203.0.113.21",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret=engine_secret)
+        headers[ENGINE_ID_HEADER] = "engine-revoked-1"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+
+    def test_unknown_engine_id_is_rejected(self) -> None:
+        payload = {
+            "command_id": "c-engine-unknown",
+            "action": "watchlist",
+            "ip_address": "203.0.113.22",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body, secret="whatever-secret")
+        headers[ENGINE_ID_HEADER] = "engine-does-not-exist"
+        headers["Content-Type"] = "application/json"
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 401, response.text)
+
+    def test_no_engine_header_falls_back_to_global_token_path_regression(self) -> None:
+        """Regression guard: when x-smartids-engine-id is absent, behavior must
+        be byte-for-byte identical to before the engines feature existed — the
+        global SMARTIDS_INTERNAL_SERVICE_TOKEN secret is used and
+        EngineRepository is never consulted, even if it would otherwise
+        authorize a differently-named engine."""
+        FakeEngineRepository.engines_by_public_id["should-not-be-looked-up"] = SimpleNamespace(
+            status=EngineStatus.active, secret="irrelevant"
+        )
+        payload = {
+            "command_id": "c-no-engine-header",
+            "action": "watchlist",
+            "ip_address": "203.0.113.23",
+            "duration_seconds": 300,
+        }
+        body = json_dumps(payload)
+        headers = sign_request("POST", "/api/v1/engine-commands", body=body)
+        headers["Content-Type"] = "application/json"
+        self.assertNotIn(ENGINE_ID_HEADER, headers)
+
+        with TestClient(app) as client:
+            response = client.post("/api/v1/engine-commands", content=body, headers=headers)
+            self.assertEqual(response.status_code, 201, response.text)
 
 
 if __name__ == "__main__":
