@@ -18,6 +18,7 @@ from packet_capture.realtime.engine_ws_client import EngineWSClient
 from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
 from packet_capture.auth.request_signer import InternalRequestSigner
+from packet_capture.registration.local_config import EngineLocalConfig
 from response_engine.backend_command_poller import BackendCommandPoller
 
 
@@ -45,9 +46,7 @@ class SnifferService:
         backend_commands_endpoint = os.getenv("SMARTIDS_COMMANDS_ENDPOINT", "").strip()
         backend_commands_ack_endpoint = os.getenv("SMARTIDS_COMMANDS_ACK_ENDPOINT", "").strip()
         internal_service_token = os.getenv("SMARTIDS_INTERNAL_SERVICE_TOKEN", "").strip()
-        internal_request_signer = (
-            InternalRequestSigner(internal_service_token) if internal_service_token else None
-        )
+        internal_request_signer = self._resolve_internal_request_signer(internal_service_token)
         backend_commands_poll_interval_seconds = float(
             os.getenv("SMARTIDS_COMMANDS_POLL_INTERVAL_SECONDS", "1.5")
         )
@@ -210,6 +209,73 @@ class SnifferService:
         if not raw:
             return None
         return [item.strip() for item in raw.split(",") if item.strip()]
+
+    def _resolve_internal_request_signer(self, internal_service_token: str):
+        """Chooses the engine's internal-auth signer, in priority order:
+
+        1. A previously saved local engine config (browser-registered
+           credential) -- attaches ``x-smartids-engine-id`` alongside the
+           HMAC signature on every request.
+        2. ``SMARTIDS_INTERNAL_SERVICE_TOKEN`` (today's global-token path,
+           unchanged) -- no engine id attached.
+        3. ``SMARTIDS_ENGINE_REGISTRATION_ENABLED=true`` -- kicks off the
+           browser registration flow (blocking, bounded by its own
+           timeout); on success behaves like (1), on failure/timeout falls
+           through to no signer.
+        4. Otherwise: no signer (today's existing fallback).
+
+        Purely additive: when there's no local config and the registration
+        flag is unset (the default), this is byte-for-byte the same as the
+        old ``InternalRequestSigner(internal_service_token) if
+        internal_service_token else None`` inline logic.
+        """
+        local_engine_config = EngineLocalConfig().load()
+        if local_engine_config:
+            log_event(
+                self.logger,
+                "info",
+                "using locally registered engine credential for internal auth",
+                {
+                    "event_type": "engine_auth_mode_local_config",
+                    "engine_id": local_engine_config.get("engine_id"),
+                },
+            )
+            return InternalRequestSigner(
+                local_engine_config["engine_secret"],
+                engine_id=local_engine_config.get("engine_id"),
+            )
+
+        if internal_service_token:
+            return InternalRequestSigner(internal_service_token)
+
+        engine_registration_enabled = os.getenv(
+            "SMARTIDS_ENGINE_REGISTRATION_ENABLED", ""
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if not engine_registration_enabled:
+            return None
+
+        from packet_capture.registration.registration_client import run_registration
+
+        log_event(
+            self.logger,
+            "info",
+            "no local engine config or internal service token, starting browser registration",
+            {"event_type": "engine_registration_starting"},
+        )
+        registered_config = run_registration()
+        if not registered_config:
+            log_event(
+                self.logger,
+                "warning",
+                "engine registration did not complete, continuing without internal auth signer",
+                {"event_type": "engine_registration_not_completed"},
+            )
+            return None
+
+        return InternalRequestSigner(
+            registered_config["engine_secret"],
+            engine_id=registered_config.get("engine_id"),
+        )
 
     def start(self):
         sniff_thread = threading.Thread(target=self.sniffer.start, daemon=True)

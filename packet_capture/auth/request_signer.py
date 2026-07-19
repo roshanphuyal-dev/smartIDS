@@ -30,8 +30,9 @@ def path_with_query(url: str) -> str:
 
 
 class InternalRequestSigner:
-    def __init__(self, secret: str):
+    def __init__(self, secret: str, engine_id: str | None = None):
         self._secret = secret.encode()
+        self._engine_id = engine_id
 
     def sign(self, method: str, path: str, body: bytes) -> dict[str, str]:
         timestamp = str(time.time())
@@ -39,8 +40,11 @@ class InternalRequestSigner:
         body_hash = hashlib.sha256(body).hexdigest()
         signing_string = f"{method.upper()}\n{path}\n{body_hash}\n{timestamp}\n{nonce}"
         signature = hmac.new(self._secret, signing_string.encode(), hashlib.sha256).hexdigest()
-        return {
+        headers = {
             "x-smartids-signature": signature,
             "x-smartids-timestamp": timestamp,
             "x-smartids-nonce": nonce,
         }
+        if self._engine_id:
+            headers["x-smartids-engine-id"] = self._engine_id
+        return headers

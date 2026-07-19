@@ -232,6 +232,7 @@ class EngineWSClient:
                         "signature": headers["x-smartids-signature"],
                         "timestamp": headers["x-smartids-timestamp"],
                         "nonce": headers["x-smartids-nonce"],
+                        "engine_id": headers.get("x-smartids-engine-id"),
                     },
                 }
             )

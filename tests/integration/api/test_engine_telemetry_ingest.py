@@ -70,7 +70,7 @@ class FakeAsyncRedis:
 class FakeEngineTelemetryService:
     payloads = []
 
-    async def ingest(self, payload):
+    async def ingest(self, payload, *, engine=None, client_ip=None):
         self.payloads.append(payload)
         return {
             "accepted": True,
