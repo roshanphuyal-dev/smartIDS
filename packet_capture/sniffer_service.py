@@ -30,7 +30,12 @@ class SnifferService:
         self.capture_interface_override = os.getenv("SMARTIDS_CAPTURE_INTERFACE", "").strip()
         self.interface = interface or InterfaceManager.resolve_interface(self.capture_interface_override)
         self.packet_queue = Queue(maxsize=10000)
-        self.packet_filter = packet_filter or PacketFilters.basic_filter()
+        self.packet_filter = packet_filter or PacketFilters.build_capture_filter(
+            watch_ips=self._csv_env("SMARTIDS_CAPTURE_WATCH_IPS"),
+            watch_ports=self._csv_env("SMARTIDS_CAPTURE_WATCH_PORTS"),
+            exclude_ips=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_IPS"),
+            exclude_ports=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_PORTS"),
+        )
 
         fastapi_alert_endpoint = os.getenv("SMARTIDS_ALERT_ENDPOINT", "").strip()
         fastapi_ids_event_endpoint = os.getenv("SMARTIDS_IDS_EVENT_ENDPOINT", "").strip()
@@ -198,6 +203,13 @@ class SnifferService:
 
             if key and key not in os.environ:
                 os.environ[key] = value
+
+    @staticmethod
+    def _csv_env(env_name):
+        raw = os.getenv(env_name, "").strip()
+        if not raw:
+            return None
+        return [item.strip() for item in raw.split(",") if item.strip()]
 
     def start(self):
         sniff_thread = threading.Thread(target=self.sniffer.start, daemon=True)

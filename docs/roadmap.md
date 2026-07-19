@@ -27,7 +27,21 @@ All 7 workstreams from the approved engine-improvement plan landed; granular log
 
 ---
 
+## Completed — Capture-Level Watch/Exclude Filtering (2026-07-19)
+
+`PacketFilters.build_capture_filter()` (`packet_capture/utils/packet_filters.py`) builds a BPF filter string from allow-list (`SMARTIDS_CAPTURE_WATCH_IPS`/`_PORTS`) and block-list (`SMARTIDS_CAPTURE_EXCLUDE_IPS`/`_PORTS`) env vars, wired into `SnifferService.__init__` (`packet_capture/sniffer_service.py`) in place of the hardcoded `PacketFilters.basic_filter()`. Malformed entries (bad IPv4, out-of-range port) are logged and skipped rather than raised. Defaults to today's exact `"ip"` behavior when nothing is configured — purely additive, no queue/session/feature/ML code touched (libpcap applies the filter before packets reach Python). Part B of `docs/plans/engine-registration-and-capture-filter.md`; Part A (engine registration) remains in Planned below.
+
+---
+
 ## Planned
+
+### Engine Registration / Capture Filtering (2026-07-19)
+
+Full design: `docs/plans/engine-registration-and-capture-filter.md`. Sent to Ultraplan for cloud refinement (session `session_01ToEC8FPcQWije7mC3vJ25e`); reconcile any refined version back into that file rather than keeping two copies.
+
+- Browser-based per-engine registration (device-linking style: local temp server + browser approval), issuing a revocable per-engine HMAC credential that **coexists** with the existing global `SMARTIDS_INTERNAL_SERVICE_TOKEN` rather than replacing it. New `engines` table (registration/status/credential management only — deliberately **not** adding per-engine scoping to `ids_events`/`alerts`/`sessions`); phased: (1) registration + local config, (2) heartbeats/WS status/dashboard list, (3) remote policy push, credential rotation, live revocation, local event buffering.
+
+Capture-level IP/port watch/exclude filtering (previously listed here) landed 2026-07-19 — see Completed below.
 
 ### ML / Dataset
 
