@@ -1,0 +1,8 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/iIntrusion-detection-system/ids-api.git
+[submodule "fronend"]
+	path = frontend
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/iIntrusion-detection-system/ids-web.git

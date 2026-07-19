@@ -6,7 +6,7 @@ from typing import Optional
 class SessionKey:
     src_ip: str
     dst_ip: str
-    protocol: str
+    protocol: int
     src_port: Optional[int] = None
     dst_port: Optional[int] = None
 
