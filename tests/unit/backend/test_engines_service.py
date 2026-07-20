@@ -7,7 +7,7 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 ROOT = Path(__file__).resolve().parents[3]
 BACKEND_ROOT = ROOT / "backend"
@@ -36,6 +36,7 @@ from app.features.engines.service import (
     PENDING_REGISTRATION_TTL_SECONDS,
     EngineService,
 )
+from app.features.realtime.engine_ws_router import WS_CLOSE_ENGINE_REVOKED
 
 
 class FakeEngineRepository:
@@ -250,6 +251,68 @@ class EngineServiceRotateCredentialTest(unittest.TestCase):
             asyncio.run(service.rotate_credential("engine-2", "user-1"))
 
         self.assertEqual(repository.updated, [])
+
+
+class EngineServiceRevokeEngineTest(unittest.TestCase):
+    """Covers the Phase 3 'revocation, made live' behavior: revoke_engine
+    must force-close an already-open WS connection for the revoked engine
+    (best-effort — must not raise when there is none)."""
+
+    def test_revoke_sets_status_and_force_disconnects_connected_engine(self) -> None:
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        engine = Engine(
+            user_id="user-1",
+            name="My Engine",
+            engine_public_id="engine-pub-revoke-1",
+            secret="secret-value",
+        )
+        engine.status = EngineStatus.active
+        repository.engines_by_id_and_user[("engine-1", "user-1")] = engine
+        service = EngineService(repository, redis_client)
+
+        with patch(
+            "app.features.engines.service.engine_ws_manager.force_disconnect",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as mock_force_disconnect:
+            updated = asyncio.run(service.revoke_engine("engine-1", "user-1"))
+
+        self.assertEqual(updated.status, EngineStatus.revoked)
+        self.assertIsNotNone(updated.revoked_at)
+        self.assertEqual(repository.updated, [engine])
+        mock_force_disconnect.assert_awaited_once_with(
+            "engine-pub-revoke-1", code=WS_CLOSE_ENGINE_REVOKED, reason="revoked"
+        )
+
+    def test_revoke_does_not_raise_when_engine_not_connected(self) -> None:
+        """No mocking here: exercises the real EngineWSConnectionManager
+        singleton with zero connections, which must return False quietly
+        rather than raising back into revoke_engine."""
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        engine = Engine(
+            user_id="user-1",
+            name="My Engine",
+            engine_public_id="engine-pub-revoke-2-not-connected",
+            secret="secret-value",
+        )
+        engine.status = EngineStatus.active
+        repository.engines_by_id_and_user[("engine-2", "user-1")] = engine
+        service = EngineService(repository, redis_client)
+
+        updated = asyncio.run(service.revoke_engine("engine-2", "user-1"))
+
+        self.assertEqual(updated.status, EngineStatus.revoked)
+        self.assertIsNotNone(updated.revoked_at)
+
+    def test_raises_when_engine_missing_or_not_owned(self) -> None:
+        redis_client = AsyncMock()
+        repository = FakeEngineRepository()
+        service = EngineService(repository, redis_client)
+
+        with self.assertRaises(EngineNotFoundException):
+            asyncio.run(service.revoke_engine("missing-engine", "user-1"))
 
 
 if __name__ == "__main__":

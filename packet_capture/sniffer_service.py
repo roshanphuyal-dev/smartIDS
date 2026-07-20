@@ -14,6 +14,7 @@ from packet_capture.forwarding.fastapi_ids_event_forwarder import FastAPIIDSEven
 from packet_capture.forwarding.fastapi_session_update_forwarder import FastAPISessionUpdateForwarder
 from packet_capture.forwarding.fastapi_engine_telemetry_forwarder import FastAPIEngineTelemetryForwarder
 from packet_capture.forwarding.background_publisher import BackgroundPublisher
+from packet_capture.forwarding.disk_spill_store import DiskSpillStore
 from packet_capture.realtime.engine_ws_client import EngineWSClient
 from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
@@ -91,6 +92,20 @@ class SnifferService:
         self.forwarder_drop_log_every = max(
             1,
             int(os.getenv("SMARTIDS_FORWARDER_DROP_LOG_EVERY", "25")),
+        )
+        # Phase 3: local event buffering when the backend is unreachable.
+        # Default off -- when disabled, BackgroundPublisher gets no
+        # spill_store and behavior is byte-for-byte unchanged from today
+        # (failed publishes are still discarded, not durably buffered).
+        self.disk_spill_enabled = os.getenv("SMARTIDS_DISK_SPILL_ENABLED", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self.disk_spill_max_entries = max(
+            1,
+            int(os.getenv("SMARTIDS_DISK_SPILL_MAX_ENTRIES", "2000")),
         )
         if fastapi_engine_telemetry_endpoint:
             self.telemetry_forwarder = FastAPIEngineTelemetryForwarder(
@@ -326,6 +341,8 @@ class SnifferService:
                 "forwarder_queue_size": self.forwarder_queue_size,
                 "forwarder_drop_log_every": self.forwarder_drop_log_every,
                 "capture_health_logging_enabled": self.capture_health_logging_enabled,
+                "disk_spill_enabled": self.disk_spill_enabled,
+                "disk_spill_max_entries": self.disk_spill_max_entries,
                 "backend_commands_enabled": bool(self.backend_commands_endpoint),
                 "backend_commands_endpoint": self.backend_commands_endpoint,
                 "backend_commands_poll_interval_seconds": self.backend_commands_poll_interval_seconds,
@@ -394,10 +411,17 @@ class SnifferService:
             time.sleep(self.backend_commands_poll_interval_seconds)
 
     def _build_background_publisher(self, *, name: str, publish):
+        spill_store = None
+        if self.disk_spill_enabled:
+            spill_store = DiskSpillStore(
+                file_path=f"logs/spill_{name}.jsonl",
+                max_entries=self.disk_spill_max_entries,
+            )
         dispatcher = BackgroundPublisher(
             name=name,
             publish=publish,
             max_queue_size=self.forwarder_queue_size,
             drop_log_every=self.forwarder_drop_log_every,
+            spill_store=spill_store,
         )
         return dispatcher.submit

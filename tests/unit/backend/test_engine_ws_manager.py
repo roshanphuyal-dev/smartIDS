@@ -13,14 +13,21 @@ from app.features.realtime.engine_ws_manager import EngineWSConnectionManager
 
 
 class FakeWebSocket:
-    def __init__(self, fail: bool = False) -> None:
+    def __init__(self, fail: bool = False, fail_close: bool = False) -> None:
         self.sent: list[dict] = []
         self._fail = fail
+        self._fail_close = fail_close
+        self.closed_with: tuple[int, str] | None = None
 
     async def send_json(self, payload: dict) -> None:
         if self._fail:
             raise RuntimeError("connection broken")
         self.sent.append(payload)
+
+    async def close(self, code: int, reason: str) -> None:
+        if self._fail_close:
+            raise RuntimeError("already closed")
+        self.closed_with = (code, reason)
 
 
 class EngineWSConnectionManagerTest(unittest.TestCase):
@@ -62,6 +69,74 @@ class EngineWSConnectionManagerTest(unittest.TestCase):
 
         self.assertFalse(manager.has_connections())
         result = asyncio.run(manager.push_command({"command_id": "c-1"}))
+        self.assertFalse(result)
+
+    def test_push_command_still_broadcasts_to_all_connections(self) -> None:
+        """Regression check: adding the engine-scoped lookup must not break
+        the existing flat-set broadcast used by push_command."""
+        manager = EngineWSConnectionManager()
+        ws_a = FakeWebSocket()
+        ws_b = FakeWebSocket()
+        manager.connect(ws_a, engine_public_id="engine-a")
+        manager.connect(ws_b)  # global-token connection, no engine identity
+
+        result = asyncio.run(manager.push_command({"command_id": "c-1"}))
+
+        self.assertTrue(result)
+        self.assertEqual(len(ws_a.sent), 1)
+        self.assertEqual(len(ws_b.sent), 1)
+
+    def test_push_config_update_still_broadcasts_to_all_connections(self) -> None:
+        """Same regression check as above, for push_config_update."""
+        manager = EngineWSConnectionManager()
+        ws_a = FakeWebSocket()
+        ws_b = FakeWebSocket()
+        manager.connect(ws_a, engine_public_id="engine-a")
+        manager.connect(ws_b)
+
+        result = asyncio.run(manager.push_config_update({"key": "value"}))
+
+        self.assertTrue(result)
+        self.assertEqual(len(ws_a.sent), 1)
+        self.assertEqual(len(ws_b.sent), 1)
+
+    def test_force_disconnect_closes_connected_engine(self) -> None:
+        manager = EngineWSConnectionManager()
+        ws = FakeWebSocket()
+        manager.connect(ws, engine_public_id="engine-abc")
+
+        result = asyncio.run(manager.force_disconnect("engine-abc", code=4402, reason="revoked"))
+
+        self.assertTrue(result)
+        self.assertEqual(ws.closed_with, (4402, "revoked"))
+
+    def test_force_disconnect_returns_false_when_engine_not_connected(self) -> None:
+        manager = EngineWSConnectionManager()
+
+        result = asyncio.run(
+            manager.force_disconnect("engine-missing", code=4402, reason="revoked")
+        )
+
+        self.assertFalse(result)
+
+    def test_force_disconnect_swallows_close_errors(self) -> None:
+        manager = EngineWSConnectionManager()
+        ws = FakeWebSocket(fail_close=True)
+        manager.connect(ws, engine_public_id="engine-broken")
+
+        result = asyncio.run(
+            manager.force_disconnect("engine-broken", code=4402, reason="revoked")
+        )
+
+        self.assertTrue(result)
+
+    def test_disconnect_removes_engine_scoped_entry(self) -> None:
+        manager = EngineWSConnectionManager()
+        ws = FakeWebSocket()
+        manager.connect(ws, engine_public_id="engine-xyz")
+        manager.disconnect(ws)
+
+        result = asyncio.run(manager.force_disconnect("engine-xyz", code=4402, reason="revoked"))
         self.assertFalse(result)
 
 

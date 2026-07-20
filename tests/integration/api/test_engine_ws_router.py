@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import os
@@ -24,7 +25,10 @@ from app.core.config import get_settings
 from app.core.redis import get_internal_auth_redis
 from app.features.engines.models import EngineStatus
 from app.features.realtime import engine_ws_manager as engine_ws_manager_module
-from app.features.realtime.engine_ws_router import router as engine_ws_router
+from app.features.realtime.engine_ws_router import (
+    WS_CLOSE_ENGINE_REVOKED,
+    router as engine_ws_router,
+)
 from app.features.realtime.engine_ws_schemas import ENGINE_WS_AUTH_METHOD, ENGINE_WS_AUTH_PATH
 
 
@@ -322,6 +326,76 @@ class EngineWSCredentialRotationAuthTest(unittest.TestCase):
                 ws.send_json({"type": "auth", "id": "1", "ts": time.time(), "payload": auth})
                 with self.assertRaises(Exception):
                     ws.receive_json()
+
+
+class EngineWSForceDisconnectTest(unittest.TestCase):
+    """Covers Phase 3 'revocation, made live': engine_ws_manager.connect()
+    now registers engine-scoped connections by engine_public_id, and
+    force_disconnect() (what EngineService.revoke_engine calls after the DB
+    revoke succeeds) actually closes a live connection with the dedicated
+    WS_CLOSE_ENGINE_REVOKED close code."""
+
+    def setUp(self) -> None:
+        os.environ["SMARTIDS_INTERNAL_SERVICE_TOKEN"] = TEST_SECRET
+        get_settings.cache_clear()
+        self.fake_redis = FakeAsyncRedis()
+        app.dependency_overrides[get_internal_auth_redis] = lambda: self.fake_redis
+        engine_ws_manager_module.engine_ws_manager._connections.clear()
+        engine_ws_manager_module.engine_ws_manager._by_engine_id.clear()
+        FakeEngineRepository.engines_by_public_id = {}
+        self.repository_patcher = patch(
+            "app.features.realtime.engine_ws_router.EngineRepository", FakeEngineRepository
+        )
+        self.session_patcher = patch(
+            "app.features.realtime.engine_ws_router.async_session_factory",
+            lambda: FakeSessionCM(),
+        )
+        self.repository_patcher.start()
+        self.session_patcher.start()
+
+    def tearDown(self) -> None:
+        self.session_patcher.stop()
+        self.repository_patcher.stop()
+        app.dependency_overrides.pop(get_internal_auth_redis, None)
+        engine_ws_manager_module.engine_ws_manager._connections.clear()
+        engine_ws_manager_module.engine_ws_manager._by_engine_id.clear()
+        FakeEngineRepository.engines_by_public_id = {}
+
+    def test_force_disconnect_closes_live_engine_scoped_connection(self) -> None:
+        secret = "engine-ws-secret-force-close-00"
+        FakeEngineRepository.engines_by_public_id["engine-ws-force-1"] = SimpleNamespace(
+            engine_public_id="engine-ws-force-1",
+            status=EngineStatus.active,
+            secret=secret,
+            previous_secret=None,
+            previous_secret_expires_at=None,
+        )
+        auth = sign_ws_auth(
+            secret=secret, nonce="ws-nonce-force-close-000000000", engine_id="engine-ws-force-1"
+        )
+        with TestClient(app) as client:
+            with client.websocket_connect("/api/v1/realtime/engine-ws") as ws:
+                ws.send_json({"type": "auth", "id": "1", "ts": time.time(), "payload": auth})
+                reply = ws.receive_json()
+                self.assertEqual(reply["payload"]["status"], "ok")
+
+                closed = asyncio.run(
+                    engine_ws_manager_module.engine_ws_manager.force_disconnect(
+                        "engine-ws-force-1", code=WS_CLOSE_ENGINE_REVOKED, reason="revoked"
+                    )
+                )
+                self.assertTrue(closed)
+
+                with self.assertRaises(Exception):
+                    ws.receive_json()
+
+    def test_force_disconnect_returns_false_for_unconnected_engine(self) -> None:
+        closed = asyncio.run(
+            engine_ws_manager_module.engine_ws_manager.force_disconnect(
+                "engine-ws-never-connected", code=WS_CLOSE_ENGINE_REVOKED, reason="revoked"
+            )
+        )
+        self.assertFalse(closed)
 
 
 if __name__ == "__main__":
