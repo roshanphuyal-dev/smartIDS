@@ -100,7 +100,7 @@ Repository-observed conventions (from `AGENTS.md` and `backend/AGENTS.md`):
 | Root/backend unit + integration tests | `.venv/bin/python -m unittest discover tests` (Linux) / `.\.venv_windows\Scripts\python.exe -m unittest discover tests` (Windows) | Test discovery root: `tests/`. |
 | Focused test | `python -m unittest tests.unit.core.test_engine_telemetry` (example) | Substitute target module. |
 | Backend smoke checks | e.g. `.venv/bin/python backend/smoke/smoke_database_barrel_import.py` | Temporary scaffolding per `backend/CHECKLIST.md`; remove once cutover is stable. |
-| ML model build/verify/activate | `.venv/bin/python -m ml.training.build_cicids2017_model` | Build, evaluate, and verify before atomic activation; existing active artifacts preserved on failure. |
+| ML model train/evaluate | `.venv/bin/python -m ml.training.train_xgboost_cicids2018` then `.venv/bin/python -m ml.evaluation.evaluate_cicids2018` | No atomic build/verify/activate command yet for the CICIDS2018 path; copy artifacts into `ml/saved_models/CICIDS_XGBOOSTER` manually. |
 | Frontend lint | `bun run lint` (in `frontend/`) | ESLint via `eslint`. |
 | Frontend tests | Unknown | No `test` script defined in `frontend/package.json`. |
 | Python lint/format/type-check | Unknown | No ruff/black/flake8/mypy config or dependency found in the repo. `pytest.ini` exists at root but README documents `unittest discover`, not `pytest`, as the test runner. |

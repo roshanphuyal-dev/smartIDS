@@ -45,9 +45,9 @@ Capture-level IP/port watch/exclude filtering (previously listed here) landed 20
 
 ### ML / Dataset
 
-- Add a CIC IDS 2018 live-compatible training/evaluation entrypoint that consumes the newly prepared outputs, without replacing the CICIDS2017 flow yet.
-- Regenerate or replace the bundled CICIDS2017 train/test datasets with verified values for all canonical `FEATURE_COLUMNS`.
-- Remove legacy CICIDS2017-specific training/evaluation/preparation paths **after** the CIC IDS 2018 model is trained, verified, and accepted as the primary live-compatible model (not yet — CICIDS2018 is not yet primary).
+- CIC IDS 2018 live-compatible training/evaluation entrypoint already exists and, per `backend/CHECKLIST.md` (2026-06-30), CICIDS2018 XGBoost+DecisionTree is already wired as the primary live model.
+- Legacy CICIDS2017-specific training/evaluation/preparation paths (and the CICIDS2017-only replay demo tool) removed 2026-07-20, now that CICIDS2018 is the primary live-compatible model.
+- Regenerating/replacing the bundled CICIDS2017 train/test datasets is moot now that the legacy path is removed — **dropped**, not deferred.
 
 ### Dashboard / Live Data
 

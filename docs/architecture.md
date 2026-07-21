@@ -87,8 +87,8 @@ packet_capture.main
 ## ML Pipeline
 
 - **Canonical schema contract**: `ml/features/schema.py::FEATURE_COLUMNS` is the single source of truth. Dataset prep, training, evaluation, saved artifacts, and live extraction all import it — never a duplicated feature list (enforced by tests in `tests/unit/ml/`).
-- **Datasets** (`ml/datasets/`): CICIDS2017 and CICIDS2018 loaders/preparers/splitters, each mapped through `ml/features/{cicids2017,cicids2018}_mapping.py` and validated via matching `*_validation.py` modules.
-- **Training** (`ml/training/`): `build_cicids2017_model.py` (build → evaluate → verify → atomic activation, one command); `train_cicids2017.py` (legacy); `train_cicids2017_live_compatible.py`, `train_xgboost_cicids2018.py`, `train_cicids2018_live_compatible.py` (live-compatible / CICIDS2018 path, in progress — see `docs/roadmap.md`).
+- **Datasets** (`ml/datasets/`): CICIDS2018 loaders/preparers/splitters, mapped through `ml/features/cicids2018_mapping.py` and validated via `cicids2018_validation.py`. Legacy CICIDS2017 preparation/training/evaluation paths were removed 2026-07-20 once the CICIDS2018 model became the primary live-compatible model — see `docs/roadmap.md`.
+- **Training** (`ml/training/`): `train_xgboost_cicids2018.py`, `train_cicids2018_live_compatible.py` (live-compatible / CICIDS2018 path, primary).
 - **Models** (`ml/models/`): `sklearn_model.py` (custom decision tree), `xgboost_model.py`.
 - **Runtime** (`ml/runtime/`): `live_predictor.py` and `completed_flow_predictor.py` perform inference; `model_stack.py` combines a primary model (XGBoost) with a secondary model (custom decision tree); `artifact_validation.py` validates saved artifacts against the canonical schema before prediction and fails fast / disables prediction on mismatch.
 - **Evaluation** (`ml/evaluation/`): per-class metrics, confusion matrix, and false-positive-rate reporting for the Normal Traffic class (`metrics.py`).
@@ -240,4 +240,4 @@ No other third-party APIs found in the codebase.
 
 ## Replay / Tools
 
-`tools/replay_cicids_csv.py`, `replay/` — replay CICIDS CSV rows as if they were live packets/events, for offline pipeline testing without live capture.
+The CICIDS2017 CSV replay tool (`tools/replay_cicids_csv.py`, `replay/`) was removed 2026-07-20 alongside the legacy CICIDS2017 training/evaluation/preparation paths — it depended directly on the removed `ml/features/cicids2017_mapping.py`.

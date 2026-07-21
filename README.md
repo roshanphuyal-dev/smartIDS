@@ -37,7 +37,7 @@ The sniff callback is intentionally tiny: parse packet data, update lightweight 
 - `packet_capture/` - Scapy sniffer, packet parsing, processor orchestration, backend forwarders, engine telemetry.
 - `traffic_engine/` - Session keys, session model, active-session builder, expiration and prediction triggers.
 - `feature_engine/` - Runtime feature extraction and safe statistics helpers.
-- `ml/` - Canonical feature schema, CICIDS2017 mapping/validation, training, evaluation, runtime model loading.
+- `ml/` - Canonical feature schema, CICIDS2018 mapping/validation, training, evaluation, runtime model loading.
 - `response_engine/` - Firewall adapters, response policy, block/watchlist state, durable processed-command dedupe.
 - `backend/` - FastAPI API, auth, persistence, realtime WebSocket channels, migrations, smoke checks.
 - `backend/app/db/` and `backend/migrations/` - Canonical backend-owned database modules and Alembic migrations.
@@ -422,43 +422,44 @@ python -m unittest tests.integration.api.test_internal_service_auth
 
 The runtime ML contract is strict: training, evaluation, saved artifacts, and live prediction must use exactly `ml/features/schema.py::FEATURE_COLUMNS`.
 
-Prepare CICIDS2017 data from a verified raw CSV or directory of raw CSVs:
+Prepare CICIDS2018 data from a verified raw CSV or directory of raw CSVs:
 
 Windows:
 
 ```powershell
-.\.venv_windows\Scripts\python.exe -m ml.datasets.prepare_cicids2017 `
-  --source C:\path\to\raw-cicids2017 `
+.\.venv_windows\Scripts\python.exe -m ml.datasets.prepare_cicids2018 `
+  --source C:\path\to\raw-cicids2018 `
   --output-dir ml\data
 ```
 
 Linux:
 
 ```bash
-.venv/bin/python -m ml.datasets.prepare_cicids2017 \
-  --source /path/to/raw-cicids2017 \
+.venv/bin/python -m ml.datasets.prepare_cicids2018 \
+  --source /path/to/raw-cicids2018 \
   --output-dir ml/data
 ```
 
-Build, evaluate, verify, and atomically activate a live-compatible model:
+Train and evaluate the live-compatible XGBoost model:
 
 Windows:
 
 ```powershell
-.\.venv_windows\Scripts\python.exe -m ml.training.build_cicids2017_model
+.\.venv_windows\Scripts\python.exe -m ml.training.train_xgboost_cicids2018
+.\.venv_windows\Scripts\python.exe -m ml.evaluation.evaluate_cicids2018
 ```
 
 Linux:
 
 ```bash
-.venv/bin/python -m ml.training.build_cicids2017_model
+.venv/bin/python -m ml.training.train_xgboost_cicids2018
+.venv/bin/python -m ml.evaluation.evaluate_cicids2018
 ```
 
-If activation fails, existing active artifacts under `ml/saved_models` are preserved. Stop the IDS runtime before activation on Windows so open model files do not block directory replacement.
+There is no single atomic build/verify/activate command for the CICIDS2018 path yet — copy the trained artifacts into `ml/saved_models/CICIDS_XGBOOSTER` manually and stop the IDS runtime first on Windows so open model files do not block directory replacement.
 
 Contract examples live in:
 
-- `ml/contracts/cicids2017_training_row.example.json`
 - `ml/contracts/live_prediction_input.example.json`
 - `ml/contracts/live_prediction_output.example.json`
 
