@@ -1,7 +1,7 @@
 # Graph Report - smartIDS  (2026-07-22)
 
 ## Corpus Check
-- 697 files · ~252,384 words
+- 697 files · ~252,370 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary

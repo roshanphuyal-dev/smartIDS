@@ -8,7 +8,7 @@ This file does not duplicate the full changelog in `backend/CHECKLIST.md` — on
 
 ## In Progress
 
-- Smoke the live IDS runtime against the backend ingest path and verify persisted IDS events carry both the XGBoost primary and the custom-decision-tree secondary model outputs end-to-end (`backend/CHECKLIST.md`).
+- Smoke the live IDS runtime against the backend ingest path and verify persisted `ids_events` rows for both the XGBoost primary prediction and the DecisionTree secondary shadow prediction appear correctly correlated (matching `session_id`, close `ts`) for the same completed flow — by design these are two separate rows (secondary runs async so it can never influence the primary decision), not one combined row (`backend/CHECKLIST.md`).
 - Burn in `SMARTIDS_FEATURE_EXTRACTION_VALIDATE` (Welford's-algorithm packet-length stats vs. the existing list-based computation) against real/replayed traffic before cutting the extractor over to the incremental values (`backend/CHECKLIST.md`, 2026-07-18 entry).
 
 ---
@@ -59,7 +59,7 @@ Capture-level IP/port watch/exclude filtering (previously listed here) landed 20
 
 ### Frontend
 
-- Add frontend route middleware for login-required page access.
+- ~~Add frontend route middleware for login-required page access.~~ **Resolved 2026-07-21** — `frontend/src/middleware.ts` forwards `x-pathname`/`x-search` for protected routes; `(dashboard)/layout.tsx` builds `/login?next=<path>` on redirect (reusing the existing `sanitizeNextPath`/`login` `next=` handling).
 - Add frontend routing and shared application shell for Dashboard, Threat Reports, Session Logs, and Blocked IPs.
 
 ### SQL Injection

@@ -28,6 +28,7 @@ from app.features.engines.exceptions import (
     PendingRegistrationNotFoundException,
 )
 from app.features.engines.models import Engine, EngineStatus
+import app.features.auth.models  # noqa: F401 -- registers User for Engine.user relationship resolution
 from app.features.engines.schemas import RegisterInitRequest
 from app.features.engines.service import (
     CREDENTIAL_ROTATION_GRACE_PERIOD_SECONDS,
