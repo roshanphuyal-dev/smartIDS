@@ -33,6 +33,21 @@ All 7 workstreams from the approved engine-improvement plan landed; granular log
 
 ---
 
+## Completed — Code-Review Fixes: Detection/Alerting, Telemetry, Sessions, Migration Hygiene (2026-07-23)
+
+All 10 findings from a high-effort `/code-review` pass over the detection/alerting + engine-registration diff fixed and verified; granular log in `backend/CHECKLIST.md`. Summary:
+
+- Closed a Redis rate-limit TTL race in engine registration init (`engines/dependencies.py`) via atomic Lua `INCR`+`EXPIRE`, so a partial Redis failure can no longer leave a permanently-incrementing, never-expiring lockout key.
+- Made `/detect`'s alert persistence and realtime/dashboard broadcast non-fatal to the detection response; extracted the inlined severity/dedup-key/alert-building logic out of `detection/router.py` into `AlertService.record_http_detection`, unifying the two previously-divergent dedup-key schemes (HTTP detection vs. IDS event ingestion) into one `alert:v1:<sha256>` format.
+- Fixed the model-metrics broadcast to reuse in-memory telemetry data instead of re-querying, debounced it to the same 5s window as the sibling dashboard-series broadcast, confirmed it's error-guarded.
+- Restored a 60s fallback poll for `modelMetrics` on the frontend now that push-only realtime coverage has gaps (no engine connected, transient failure).
+- Fixed the sessions page port filter to actually reach the backend instead of only filtering the current page; since the backend ANDs `source_port`/`destination_port` but the UI filter means "either side," it now queries both and merges rather than silently changing filter semantics.
+- Fixed `alerts/service.py`'s `metadata_json` merge to use `is not None` instead of truthiness, so an explicit `{}` update is no longer dropped.
+- Replaced `middleware.ts`'s hand-maintained dashboard route matcher list with a negative-lookahead pattern, so new dashboard pages are covered automatically instead of requiring manual upkeep.
+- Renamed the alert-detection migration to the repo's `YYYYMMDD_NNN` convention without touching its Alembic revision id; confirmed the revision chain still resolves head-to-base via `alembic history`.
+
+---
+
 ## Planned
 
 ### Engine Registration / Capture Filtering (2026-07-19)

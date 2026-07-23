@@ -64,6 +64,9 @@ class FakeDashboardService:
     async def broadcast_summary_metrics(self) -> None:
         self.broadcasts += 1
 
+    async def broadcast_model_metrics(self, _telemetry) -> None:
+        self.broadcasts += 1
+
 
 class FakeAnalyticsRollupService:
     def __init__(self, _session) -> None:
@@ -131,6 +134,10 @@ class FakeAlertService:
 
     async def upsert_alert(self, payload) -> None:
         self.requests.append(payload)
+
+    @staticmethod
+    def build_dedup_key(**_kwargs) -> str:
+        return "alert:v1:test"
 
 
 class FakeNetworkSession:
@@ -215,7 +222,7 @@ class LiveDashboardServicesTest(unittest.TestCase):
             history, total = asyncio.run(service.list_history(limit=10, offset=0))
 
         self.assertTrue(result["accepted"])
-        self.assertEqual(service_state["dashboard"].broadcasts, 1)
+        self.assertEqual(service_state["dashboard"].broadcasts, 2)
         self.assertEqual(len(service._realtime_service.health_messages), 1)
         self.assertEqual(len(service._realtime_service.dashboard_messages), 1)
         self.assertEqual(len(service_state["analytics"].telemetry_payloads), 1)
