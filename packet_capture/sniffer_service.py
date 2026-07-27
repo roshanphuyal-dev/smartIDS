@@ -20,6 +20,7 @@ from packet_capture.telemetry.engine_telemetry import EngineTelemetryCollector
 from packet_capture.utils.logger import IDSLogger, log_event
 from packet_capture.auth.request_signer import InternalRequestSigner
 from packet_capture.registration.local_config import EngineLocalConfig
+from packet_capture.registration.capture_config_client import fetch_capture_watch_port
 from response_engine.backend_command_poller import BackendCommandPoller
 
 
@@ -32,12 +33,7 @@ class SnifferService:
         self.capture_interface_override = os.getenv("SMARTIDS_CAPTURE_INTERFACE", "").strip()
         self.interface = interface or InterfaceManager.resolve_interface(self.capture_interface_override)
         self.packet_queue = Queue(maxsize=10000)
-        self.packet_filter = packet_filter or PacketFilters.build_capture_filter(
-            watch_ips=self._csv_env("SMARTIDS_CAPTURE_WATCH_IPS"),
-            watch_ports=self._csv_env("SMARTIDS_CAPTURE_WATCH_PORTS"),
-            exclude_ips=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_IPS"),
-            exclude_ports=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_PORTS"),
-        )
+        self._explicit_packet_filter = packet_filter
 
         fastapi_alert_endpoint = os.getenv("SMARTIDS_ALERT_ENDPOINT", "").strip()
         fastapi_ids_event_endpoint = os.getenv("SMARTIDS_IDS_EVENT_ENDPOINT", "").strip()
@@ -48,6 +44,12 @@ class SnifferService:
         backend_commands_ack_endpoint = os.getenv("SMARTIDS_COMMANDS_ACK_ENDPOINT", "").strip()
         internal_service_token = os.getenv("SMARTIDS_INTERNAL_SERVICE_TOKEN", "").strip()
         internal_request_signer = self._resolve_internal_request_signer(internal_service_token)
+        self.packet_filter = self._explicit_packet_filter or PacketFilters.build_capture_filter(
+            watch_ips=self._csv_env("SMARTIDS_CAPTURE_WATCH_IPS"),
+            watch_ports=self._resolve_watch_ports(internal_request_signer),
+            exclude_ips=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_IPS"),
+            exclude_ports=self._csv_env("SMARTIDS_CAPTURE_EXCLUDE_PORTS"),
+        )
         backend_commands_poll_interval_seconds = float(
             os.getenv("SMARTIDS_COMMANDS_POLL_INTERVAL_SECONDS", "1.5")
         )
@@ -224,6 +226,25 @@ class SnifferService:
         if not raw:
             return None
         return [item.strip() for item in raw.split(",") if item.strip()]
+
+    def _resolve_watch_ports(self, internal_request_signer):
+        """Ports to watch: the local ``SMARTIDS_CAPTURE_WATCH_PORTS`` env var,
+        plus (if this engine is browser-registered) whatever port is set on
+        its dashboard capture config. Best-effort — a missing local config or
+        an unreachable backend just means no remote port is added, same as
+        today's env-var-only behavior.
+        """
+        watch_ports = self._csv_env("SMARTIDS_CAPTURE_WATCH_PORTS") or []
+
+        local_engine_config = EngineLocalConfig().load()
+        if local_engine_config and internal_request_signer is not None:
+            remote_port = fetch_capture_watch_port(
+                local_engine_config["backend_url"], internal_request_signer
+            )
+            if remote_port is not None:
+                watch_ports = watch_ports + [str(remote_port)]
+
+        return watch_ports or None
 
     def _resolve_internal_request_signer(self, internal_service_token: str):
         """Chooses the engine's internal-auth signer, in priority order:
